@@ -218,10 +218,10 @@ const DashboardPerformanceSection = ({ data, t }: DashboardPerformanceSectionPro
                 <div className="h-7 w-7 rounded-md bg-muted flex items-center justify-center">
                   <Users className="h-4 w-4 text-muted-foreground" />
                 </div>
-                {t('dashboard.agents.humanTitle') || 'Desempenho dos Atendentes'}
+                {tx('dashboard.agents.humanTitle', 'Desempenho dos Atendentes')}
               </CardTitle>
               <CardDescription className="mt-1">
-                {t('dashboard.agents.humanSubtitle') || 'Performance do time humano no período filtrado'}
+                {tx('dashboard.agents.humanSubtitle', 'Performance do time humano no período filtrado')}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -256,10 +256,10 @@ const DashboardPerformanceSection = ({ data, t }: DashboardPerformanceSectionPro
                 <div className="h-7 w-7 rounded-md bg-muted flex items-center justify-center">
                   <Bot className="h-4 w-4 text-muted-foreground" />
                 </div>
-                {t('dashboard.agents.aiTitle') || 'Desempenho dos Agentes de IA'}
+                {tx('dashboard.agents.aiTitle', 'Desempenho dos Agentes de IA')}
               </CardTitle>
               <CardDescription className="mt-1">
-                {t('dashboard.agents.aiSubtitle') || 'Volume e participação dos agentes IA nas respostas'}
+                {tx('dashboard.agents.aiSubtitle', 'Volume e participação dos agentes IA nas respostas')}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -274,7 +274,7 @@ const DashboardPerformanceSection = ({ data, t }: DashboardPerformanceSectionPro
                       <div>
                         <div className="font-semibold">{agent.name}</div>
                         <div className="text-sm text-muted-foreground">
-                          {agent.messages} {t('dashboard.agents.aiMessages') || 'mensagens IA'} ({agent.percentage}%)
+                          {agent.messages} {tx('dashboard.agents.aiMessages', 'mensagens IA')} ({agent.percentage}%)
                         </div>
                       </div>
                       <div className="text-right min-w-[120px]">
