@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { api } from '@/services/core';
 import { setupService } from '@/services/setup/setupService';
+import { initClarity } from '@/utils/clarityUtils';
 
 export interface GlobalConfig {
   fbAppId?: string;
@@ -17,6 +18,9 @@ export interface GlobalConfig {
   hasEvolutionGoConfig?: boolean;
   openaiConfigured?: boolean;
   enableAccountSignup?: boolean;
+  recaptchaSiteKey?: string;
+  clarityProjectId?: string;
+  whitelabel?: WhitelabelConfig;
 }
 
 interface GlobalConfigContextValue extends GlobalConfig {
@@ -83,6 +87,11 @@ export const fetchSetupStatus = async (): Promise<boolean> => {
 // Listeners para notificar componentes React quando o cache é limpo
 const setupCacheListeners: Set<() => void> = new Set();
 
+export const clearGlobalConfigCache = () => {
+  globalConfigCache = null;
+  globalConfigPromise = null;
+};
+
 export const clearSetupCache = () => {
   setupRequiredCache = null;
   // Notificar todos os listeners para re-fetch
@@ -103,6 +112,10 @@ export const GlobalConfigProvider: React.FC<{ children: React.ReactNode }> = ({ 
           setConfig(configData);
           setSetupRequired(isSetupRequired);
           setSetupLoading(false);
+          // Initialize Clarity with backend-provided project ID
+          if (configData.clarityProjectId) {
+            initClarity(configData.clarityProjectId);
+          }
         }
       });
     };
