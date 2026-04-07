@@ -2,29 +2,6 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from '
 import { api } from '@/services/core';
 import { setupService } from '@/services/setup/setupService';
 
-export interface WhitelabelConfig {
-  enabled: boolean;
-  logo?: {
-    light: string;
-    dark: string;
-  };
-  favicon?: string;
-  companyName?: string;
-  systemName?: string;
-  termsOfServiceUrl?: string;
-  privacyPolicyUrl?: string;
-  colors?: {
-    light: {
-      primary: string;
-      primaryForeground: string;
-    };
-    dark: {
-      primary: string;
-      primaryForeground: string;
-    };
-  };
-}
-
 export interface GlobalConfig {
   fbAppId?: string;
   fbApiVersion?: string;
@@ -40,7 +17,6 @@ export interface GlobalConfig {
   hasEvolutionGoConfig?: boolean;
   openaiConfigured?: boolean;
   enableAccountSignup?: boolean;
-  whitelabel?: WhitelabelConfig;
 }
 
 interface GlobalConfigContextValue extends GlobalConfig {

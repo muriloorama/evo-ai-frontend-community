@@ -68,8 +68,8 @@
     "collapse": "Collapse sidebar",
     "closeSubmenu": "Close submenu",
     "footer": {
-      "brand": "Evo AI",
-      "copyright": "© {{year}} Evo AI",
+      "brand": "Evo CRM",
+      "copyright": "© {{year}} Evolution Foundation. All rights reserved.",
       "documentation": "Documentation",
       "support": "I need support"
     }
