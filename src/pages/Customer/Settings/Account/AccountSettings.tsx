@@ -18,7 +18,8 @@ import BaseHeader from '@/components/base/BaseHeader';
 import { accountService } from '@/services/account/accountService';
 import type { Account, FormDataOptions } from '@/types/settings';
 import { Copy } from 'lucide-react';
-import { getPrimaryButtonClasses } from '@/utils/whitelabelStyles';
+
+import { SettingsTour } from '@/tours';
 
 // Componente para seção
 interface SectionLayoutProps {
@@ -293,11 +294,15 @@ export default function AccountSettings() {
 
   return (
     <div className="h-full flex flex-col p-4">
-      <BaseHeader title={t('title')} subtitle={t('subtitle')} />
+      <SettingsTour />
+      <div data-tour="settings-header">
+        <BaseHeader title={t('title')} subtitle={t('subtitle')} />
+      </div>
 
       <div className="flex-1 overflow-auto">
         <div className="max-w-5xl w-full mx-auto">
           {/* Configurações Gerais */}
+          <div data-tour="settings-general">
           <SectionLayout
             title={t('sections.general.title')}
             description={t('sections.general.description')}
@@ -375,14 +380,16 @@ export default function AccountSettings() {
               )}
 
               <div>
-                <Button type="submit" disabled={saving} className={getPrimaryButtonClasses()}>
+                <Button type="submit" disabled={saving} className="bg-primary hover:bg-primary/85 text-primary-foreground border-0 font-semibold">
                   {saving ? t('buttons.saving') : t('buttons.save')}
                 </Button>
               </div>
             </form>
           </SectionLayout>
+          </div>
 
           {/* Auto-Resolução */}
+          <div data-tour="settings-auto-resolve">
           <SectionLayout
             title={t('sections.autoResolve.title')}
             description={t('sections.autoResolve.description')}
@@ -476,7 +483,7 @@ export default function AccountSettings() {
                   <Button
                     onClick={handleAutoResolveSubmit}
                     disabled={saving}
-                    className={getPrimaryButtonClasses()}
+                    className="bg-primary hover:bg-primary/85 text-primary-foreground border-0 font-semibold"
                   >
                     {saving ? t('buttons.saving') : t('buttons.updateAutoResolve')}
                   </Button>
@@ -484,6 +491,7 @@ export default function AccountSettings() {
               </div>
             )}
           </SectionLayout>
+          </div>
 
           {/* Transcrição de Áudio */}
           {isOnEvolutionCloud && (
@@ -503,6 +511,7 @@ export default function AccountSettings() {
           )}
 
           {/* ID da Conta */}
+          <div data-tour="settings-account-id">
           <SectionLayout
             title={t('sections.accountId.title')}
             description={t('sections.accountId.description')}
@@ -515,6 +524,7 @@ export default function AccountSettings() {
               </Button>
             </div>
           </SectionLayout>
+          </div>
 
           {/* Informações de Build */}
           <div className="text-center py-4 text-sm text-sidebar-foreground/60 border-t border-sidebar-border">

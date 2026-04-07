@@ -63,12 +63,6 @@ const AgentEditSidebar = ({
         show: isSubAgentType,
       },
       {
-        id: 'knowledge',
-        label: t('edit.menu.knowledge') || 'Conhecimento',
-        icon: BookOpen,
-        show: !isOrchestratorType && !isExternalType,
-      },
-      {
         id: 'tools',
         label: t('edit.menu.tools') || 'Ferramentas',
         icon: Wrench,

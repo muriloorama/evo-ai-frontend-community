@@ -41,11 +41,6 @@ import ConversationBadges from '../conversation/ConversationBadges';
 import ConversationsFilter from '../conversation/ConversationsFilter';
 import { BaseFilter } from '@/types/core';
 import { useLanguage } from '@/hooks/useLanguage';
-import {
-  getAssigneeBadgeClasses,
-  getAssigneeIconClasses,
-  getAssigneeTextClasses,
-} from '@/utils/whitelabelStyles';
 
 interface ChatSidebarProps {
   mobileView: 'list' | 'chat';
@@ -506,6 +501,7 @@ const ChatSidebar = ({
 
   return (
     <div
+      data-tour="chat-sidebar"
       className={`
         ${mobileView === 'list' ? 'flex' : 'hidden'} md:flex
         w-full md:w-80 border-r bg-card/50 flex-col h-full
@@ -514,7 +510,7 @@ const ChatSidebar = ({
       {/* Search and Filter Header */}
       <div className="p-4 border-b space-y-3">
         {/* Search */}
-        <div className="relative">
+        <div className="relative" data-tour="chat-search">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
           <Input
             type="text"
@@ -567,13 +563,14 @@ const ChatSidebar = ({
               </Badge>
             )}
 
-            {/* BotÃ£o de filtros */}
+            {/* Botão de filtros */}
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setFilterModalOpen(true)}
               disabled={filters.state.isApplyingFilters}
               className="h-8 px-2 cursor-pointer"
+              data-tour="chat-filter-button"
             >
               <Filter className="h-4 w-4" />
               {t('chatSidebar.filtersButton')}
@@ -590,6 +587,7 @@ const ChatSidebar = ({
         ref={sidebarScrollRef}
         className="flex-1 overflow-y-auto"
         onScroll={handleSidebarScroll}
+        data-tour="chat-conversations-list"
       >
         {!conversations ? (
           <ConversationSkeleton count={8} />
@@ -699,10 +697,10 @@ const ChatSidebar = ({
                         {/* Assignee indicator badge */}
                         {conversation?.assignee && (
                           <div className="flex items-center gap-1.5 mt-1">
-                            <div className={getAssigneeBadgeClasses()}>
-                              <UserIcon className={getAssigneeIconClasses()} />
+                            <div className="flex items-center space-x-1.5 px-2 py-1 rounded-md text-xs font-medium bg-primary/10 dark:bg-primary/20">
+                              <UserIcon className="h-3 w-3 flex-shrink-0 text-primary dark:text-primary" />
                               <span
-                                className={getAssigneeTextClasses()}
+                                className="truncate max-w-32 text-primary dark:text-primary/90"
                                 title={conversation.assignee?.name}
                               >
                                 {conversation.assignee?.name}
