@@ -157,14 +157,12 @@ const MessageText: React.FC<MessageTextProps> = ({
   // Para mensagens com conteúdo HTML (notas privadas, mensagens de agente, etc.)
   // Renderizar HTML sanitizado para exibir corretamente tags como <p>, <b>, etc.
   if (safeContent.includes('<') && safeContent.includes('</')) {
-    let sanitizedHTML = isPrivateNote ? safeContent : sanitizeEmailHTML(safeContent);
-    if (isPrivateNote) {
-      sanitizedHTML = sanitizedHTML.replace(/color\s*:[^;"']*;?/gi, '');
-    }
+    let sanitizedHTML = sanitizeEmailHTML(safeContent);
+    sanitizedHTML = sanitizedHTML.replace(/\s*style\s*=\s*("[^"]*"|'[^']*')/gi, '');
     return (
       <div
         className="whitespace-pre-wrap break-words rich-content"
-        style={isPrivateNote ? { color: 'inherit' } : undefined}
+        style={{ color: 'inherit', font: 'inherit' }}
         dangerouslySetInnerHTML={{ __html: sanitizedHTML }}
       />
     );

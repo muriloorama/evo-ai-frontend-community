@@ -89,6 +89,7 @@ const MessageList: React.FC<MessageListProps> = ({
     sanitized = sanitized.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
     sanitized = sanitized.replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, '');
     sanitized = sanitized.replace(/\s*on\w+\s*=\s*[^\s>]*/gi, '');
+    sanitized = sanitized.replace(/\s*style\s*=\s*("[^"]*"|'[^']*')/gi, '');
     return sanitized;
   };
 
@@ -310,6 +311,7 @@ const MessageList: React.FC<MessageListProps> = ({
                       hasHtmlTags(m.text) ? (
                         <div
                           className="whitespace-pre-wrap break-words rich-content"
+                          style={{ color: 'inherit', font: 'inherit' }}
                           dangerouslySetInnerHTML={{ __html: sanitizeMessageHTML(m.text) }}
                         />
                       ) : (
