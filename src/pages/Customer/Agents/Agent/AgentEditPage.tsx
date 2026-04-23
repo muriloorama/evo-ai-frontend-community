@@ -172,6 +172,16 @@ const AgentEditPage = () => {
     editableFields: [],
     instructions: '',
   });
+  const [attachmentTags, setAttachmentTags] = useState<
+    Array<{
+      id: string;
+      tag: string;
+      type: 'file' | 'image' | 'audio' | 'video';
+      url: string;
+      filename?: string;
+      content_type?: string;
+    }>
+  >([]);
 
   // Estados de ferramentas e MCP
   const [tools, setTools] = useState<Tool[]>([]);
@@ -531,6 +541,24 @@ const AgentEditPage = () => {
           },
         );
 
+        // Carregar tags de anexo (estrutura em hash { TAG: { url, type, ... } } → array)
+        const rawAttachmentTags = (config?.attachment_tags ?? {}) as Record<
+          string,
+          { url?: string; type?: string; filename?: string; content_type?: string }
+        >;
+        setAttachmentTags(
+          Object.entries(rawAttachmentTags).map(([tag, value], idx) => ({
+            id: `tag_${tag}_${idx}`,
+            tag,
+            type: (['file', 'image', 'audio', 'video'].includes(value?.type || '')
+              ? value!.type
+              : 'file') as 'file' | 'image' | 'audio' | 'video',
+            url: value?.url || '',
+            filename: value?.filename || '',
+            content_type: value?.content_type || '',
+          })),
+        );
+
         // Carregar ferramentas (aplicável a todos os tipos)
         setTools((agentData.config?.tools || []) as unknown as Tool[]);
         const agentToolsIds = agentData.config?.agent_tools || [];
@@ -614,6 +642,24 @@ const AgentEditPage = () => {
         instruction: formData.instruction,
       };
 
+      // Converte array de attachment tags para hash { TAG: { url, type, ... } }.
+      // Descarta entradas sem nome de tag ou sem URL — incompletas não servem.
+      const attachmentTagsHash = attachmentTags.reduce<
+        Record<
+          string,
+          { url: string; type: string; filename?: string; content_type?: string }
+        >
+      >((acc, item) => {
+        if (!item.tag || !item.url) return acc;
+        acc[item.tag] = {
+          url: item.url,
+          type: item.type,
+          ...(item.filename ? { filename: item.filename } : {}),
+          ...(item.content_type ? { content_type: item.content_type } : {}),
+        };
+        return acc;
+      }, {});
+
       // Adicionar configurações específicas do tipo
       if (agent.type === 'llm' && llmConfigData) {
         agentUpdateData.model = llmConfigData.model;
@@ -658,6 +704,7 @@ const AgentEditPage = () => {
           transfer_rules: transferRules,
           pipeline_rules: pipelineRules,
           contact_edit_config: contactEditConfig,
+          attachment_tags: attachmentTagsHash,
         } as Record<string, unknown>;
       } else if (agent.type === 'a2a' && a2aConfigData) {
         agentUpdateData.card_url = a2aConfigData.agent_card_url;
@@ -695,6 +742,7 @@ const AgentEditPage = () => {
           transfer_rules: transferRules,
           pipeline_rules: pipelineRules,
           contact_edit_config: contactEditConfig,
+          attachment_tags: attachmentTagsHash,
         } as Record<string, unknown>;
       } else if (agent.type === 'task' && taskConfigData) {
         agentUpdateData.config = {
@@ -730,6 +778,7 @@ const AgentEditPage = () => {
           transfer_rules: transferRules,
           pipeline_rules: pipelineRules,
           contact_edit_config: contactEditConfig,
+          attachment_tags: attachmentTagsHash,
         } as Record<string, unknown>;
       } else if (agent.type === 'external' && externalConfigData) {
         agentUpdateData.config = {
@@ -777,6 +826,7 @@ const AgentEditPage = () => {
           transfer_rules: transferRules,
           pipeline_rules: pipelineRules,
           contact_edit_config: contactEditConfig,
+          attachment_tags: attachmentTagsHash,
         } as Record<string, unknown>;
       }
 
@@ -852,6 +902,7 @@ const AgentEditPage = () => {
             transferRules={transferRules}
             pipelineRules={pipelineRules}
             contactEditConfig={contactEditConfig}
+            attachmentTags={attachmentTags}
             availablePipelines={availablePipelines}
             availableUsers={availableUsers}
             availableTeams={availableTeams}
@@ -901,6 +952,10 @@ const AgentEditPage = () => {
             }}
             onContactEditConfigChange={config => {
               setContactEditConfig(config);
+              setIsDirty(true);
+            }}
+            onAttachmentTagsChange={tags => {
+              setAttachmentTags(tags);
               setIsDirty(true);
             }}
             onInstructionSync={instruction => {

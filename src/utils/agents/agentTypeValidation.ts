@@ -97,6 +97,13 @@ export const supportsPipelineRules = (type?: string): boolean => {
 };
 
 /**
+ * Check if agent supports attachment tags (tags like [[ENVIAR_BROCHURA]] → arquivo)
+ */
+export const supportsAttachmentTags = (type?: string): boolean => {
+  return isLLMAgent(type);
+};
+
+/**
  * Get list of available tabs for agent type
  */
 export const getAvailableTabs = (type?: string): string[] => {
@@ -108,6 +115,10 @@ export const getAvailableTabs = (type?: string): string[] => {
 
   if (supportsInactivityActions(type)) {
     tabs.push('inactivity');
+  }
+
+  if (supportsAttachmentTags(type)) {
+    tabs.push('attachments');
   }
 
   return tabs;

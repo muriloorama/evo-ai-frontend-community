@@ -5,15 +5,17 @@ import { A2AConfigData } from '@/components/ai_agents/Forms/A2AConfigForm';
 import { TaskConfigData } from '@/components/ai_agents/Forms/TaskConfigForm';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@evoapi/design-system';
 import { Agent, ApiKey } from '@/types/agents';
-import { Settings, MessageSquare, Timer } from 'lucide-react';
+import { Settings, MessageSquare, Timer, Paperclip } from 'lucide-react';
 import { InactivityAction } from '../InactivityActions';
 import { TransferRule } from '../TransferRules';
 import { PipelineRule } from '../PipelineRules';
 import { ContactEditConfig } from '../ContactEditRules';
+import { AttachmentTag } from '../AttachmentTags';
 import {
   GeneralTab,
   SystemTab,
   InactivityActionsTab,
+  AttachmentTagsTab,
   TransferRulesModal,
   PipelineRulesModal,
 } from '@/components/agents/configuration';
@@ -22,6 +24,7 @@ import { BehaviorSettings } from '@/components/agents/configuration/SystemTab';
 import {
   getAvailableTabs,
   supportsInactivityActions,
+  supportsAttachmentTags,
 } from '@/utils/agents';
 
 interface AdvancedSettingsData {
@@ -52,6 +55,7 @@ interface ConfigurationSectionProps {
   transferRules: TransferRule[];
   pipelineRules: PipelineRule[];
   contactEditConfig: ContactEditConfig;
+  attachmentTags: AttachmentTag[];
   availablePipelines?: Array<{
     id: string;
     name: string;
@@ -80,6 +84,7 @@ interface ConfigurationSectionProps {
   onTransferRulesChange: (rules: TransferRule[]) => void;
   onPipelineRulesChange: (rules: PipelineRule[]) => void;
   onContactEditConfigChange: (config: ContactEditConfig) => void;
+  onAttachmentTagsChange: (tags: AttachmentTag[]) => void;
   onInstructionSync?: (instruction: string) => void;
   onApiKeysReload: () => void;
 }
@@ -98,6 +103,7 @@ const ConfigurationSection = ({
   transferRules,
   pipelineRules,
   contactEditConfig,
+  attachmentTags,
   availablePipelines = [],
   availableUsers = [],
   availableTeams = [],
@@ -112,6 +118,7 @@ const ConfigurationSection = ({
   onTransferRulesChange,
   onPipelineRulesChange,
   onContactEditConfigChange,
+  onAttachmentTagsChange,
   onInstructionSync,
   onApiKeysReload,
 }: ConfigurationSectionProps) => {
@@ -129,7 +136,9 @@ const ConfigurationSection = ({
   return (
     <>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 mb-6">
+        <TabsList
+          className={`grid w-full mb-6 ${availableTabs.length === 4 ? 'grid-cols-4' : 'grid-cols-3'}`}
+        >
           {/* Aba Geral */}
           {availableTabs.includes('general') && (
             <TabsTrigger value="general" className="flex items-center gap-2">
@@ -151,6 +160,14 @@ const ConfigurationSection = ({
             <TabsTrigger value="inactivity" className="flex items-center gap-2">
               <Timer className="h-4 w-4" />
               <span>{t('edit.configuration.tabs.inactivityActions') || 'Ações de inatividade'}</span>
+            </TabsTrigger>
+          )}
+
+          {/* Aba Anexos */}
+          {availableTabs.includes('attachments') && supportsAttachmentTags(agent.type) && (
+            <TabsTrigger value="attachments" className="flex items-center gap-2">
+              <Paperclip className="h-4 w-4" />
+              <span>{t('edit.configuration.tabs.attachments') || 'Anexos'}</span>
             </TabsTrigger>
           )}
         </TabsList>
@@ -204,6 +221,13 @@ const ConfigurationSection = ({
               actions={inactivityActions}
               onChange={onInactivityActionsChange}
             />
+          </TabsContent>
+        )}
+
+        {/* Conteúdo da Aba Anexos */}
+        {availableTabs.includes('attachments') && supportsAttachmentTags(agent.type) && (
+          <TabsContent value="attachments" className="mt-0">
+            <AttachmentTagsTab tags={attachmentTags} onChange={onAttachmentTagsChange} />
           </TabsContent>
         )}
       </Tabs>

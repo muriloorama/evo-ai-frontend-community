@@ -5,6 +5,7 @@
 export { default as ContactEditModal } from './ContactEditModal';
 export { GeneralTab } from './GeneralTab';
 export { InactivityActionsTab } from './InactivityActionsTab';
+export { AttachmentTagsTab } from './AttachmentTagsTab';
 export { default as PipelineAutomationModal } from './PipelineAutomationModal';
 export { PipelineRulesModal } from './PipelineRulesModal';
 export { SystemTab } from './SystemTab';
