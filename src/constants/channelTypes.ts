@@ -24,16 +24,10 @@ export const getChannelTypes = (): ChannelType[] => [
         recommended: true,
       },
       {
-        id: 'evolution',
-        name: i18n.t('channels:newChannel.providers.evolution.name'),
-        description: i18n.t('channels:newChannel.providers.evolution.description'),
-        popular: false,
-      },
-      {
-        id: 'evolution_go',
-        name: i18n.t('channels:newChannel.providers.evolutionGo.name'),
-        description: i18n.t('channels:newChannel.providers.evolutionGo.description'),
-        popular: true,
+        id: 'uazapi',
+        name: 'WhatsApp',
+        description: 'Conectar um número de WhatsApp pessoal ou comercial via QR Code.',
+        recommended: true,
       },
       {
         id: 'notificame',

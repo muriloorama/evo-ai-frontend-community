@@ -613,8 +613,6 @@ export default function ChannelConfig() {
           <TabsTrigger value="facebook">{t('channels.facebook.tabTitle')}</TabsTrigger>
           <TabsTrigger value="whatsapp">{t('channels.whatsapp.tabTitle')}</TabsTrigger>
           <TabsTrigger value="instagram">{t('channels.instagram.tabTitle')}</TabsTrigger>
-          <TabsTrigger value="evolution">{t('channels.evolution.tabTitle')}</TabsTrigger>
-          <TabsTrigger value="evolution_go">{t('channels.evolutionGo.tabTitle')}</TabsTrigger>
           <TabsTrigger value="twitter">{t('channels.twitter.tabTitle')}</TabsTrigger>
         </TabsList>
 
