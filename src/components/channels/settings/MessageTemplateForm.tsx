@@ -44,6 +44,7 @@ import MessageTemplateService, {
   usesStructuredComponents,
   getChannelTemplateConfig,
 } from '@/services/channels/messageTemplatesService';
+import api from '@/services/core/api';
 import { TemplatePreview } from './TemplatePreview';
 import { MessageTemplate, TemplateFormData } from '@/types';
 
@@ -74,12 +75,77 @@ const TemplateFormModal: React.FC<{
     template_type: 'text',
     active: true,
     // Structured fields
-    headerFormat: 'TEXT',
+    headerFormat: 'NONE',
     headerText: '',
+    headerMediaUrl: '',
     bodyText: '',
+    bodyExamples: [],
     footerText: '',
     buttons: [],
   });
+
+  // Extract {{variable}} tokens from body text
+  const bodyVariables = useMemo(() => {
+    const text = formData.bodyText || '';
+    const matches = text.match(/\{\{\s*[\w.-]+\s*\}\}/g) || [];
+    // de-duplicate preserving order
+    return Array.from(new Set(matches));
+  }, [formData.bodyText]);
+
+  // Sync bodyExamples array length with detected variables
+  useEffect(() => {
+    setFormData(prev => {
+      const current = prev.bodyExamples || [];
+      if (current.length === bodyVariables.length) return prev;
+      const next = bodyVariables.map((_, i) => current[i] || '');
+      return { ...prev, bodyExamples: next };
+    });
+  }, [bodyVariables]);
+
+  // Strip emoji + surrogate pairs (Meta rejects templates with emojis in buttons)
+  const stripEmoji = (text: string): string =>
+    text
+      .replace(
+        /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{1F000}-\u{1F9FF}\u{FE00}-\u{FE0F}\u{200D}]/gu,
+        '',
+      )
+      .replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, '');
+
+  // Character limits per Meta Cloud API spec
+  const LIMITS = {
+    headerText: 60,
+    bodyText: 1024,
+    footerText: 60,
+    buttonText: 20,
+    maxButtons: 3,
+  };
+
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+
+  const handleMediaFileSelect = async (file: File | undefined) => {
+    if (!file) return;
+    setIsUploadingMedia(true);
+    try {
+      const form = new FormData();
+      form.append('attachment', file);
+      const response = await api.post('/upload', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const fileUrl: string | undefined =
+        response.data?.data?.file_url || response.data?.file_url;
+      if (!fileUrl) {
+        toast.error(t('settings.messageTemplates.errors.uploadFailed'));
+        return;
+      }
+      setFormData(prev => ({ ...prev, headerMediaUrl: fileUrl }));
+      toast.success(t('settings.messageTemplates.success.uploadSuccess'));
+    } catch (error) {
+      console.error('Template media upload error:', error);
+      toast.error(t('settings.messageTemplates.errors.uploadFailed'));
+    } finally {
+      setIsUploadingMedia(false);
+    }
+  };
 
   useEffect(() => {
     if (template && mode === 'edit') {
@@ -98,9 +164,11 @@ const TemplateFormModal: React.FC<{
         template_type:
           (channelConfig.templateTypes[0] as TemplateFormData['template_type']) || 'text',
         active: true,
-        headerFormat: 'TEXT',
+        headerFormat: 'NONE',
         headerText: '',
+        headerMediaUrl: '',
         bodyText: '',
+        bodyExamples: [],
         footerText: '',
         buttons: [],
       });
@@ -113,6 +181,32 @@ const TemplateFormModal: React.FC<{
       if (!formData.name.trim() || !formData.bodyText?.trim()) {
         toast.error(t('settings.messageTemplates.errors.requiredFields'));
         return;
+      }
+      // Header with media requires a URL example (Meta API requirement)
+      if (
+        ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(formData.headerFormat || '') &&
+        !formData.headerMediaUrl?.trim()
+      ) {
+        toast.error(t('settings.messageTemplates.errors.headerMediaUrlRequired'));
+        return;
+      }
+      // Each body variable must have an example value (Meta API requirement)
+      if (bodyVariables.length > 0) {
+        const missing = (formData.bodyExamples || []).some(v => !v?.trim());
+        if (missing) {
+          toast.error(t('settings.messageTemplates.errors.variableExamplesRequired'));
+          return;
+        }
+      }
+      // Buttons: all must have non-empty text within limits
+      if (formData.buttons?.length) {
+        const invalid = formData.buttons.some(
+          b => !b.text.trim() || b.text.length > LIMITS.buttonText,
+        );
+        if (invalid) {
+          toast.error(t('settings.messageTemplates.errors.buttonsInvalid'));
+          return;
+        }
       }
     } else {
       if (!formData.name.trim() || !formData.content.trim()) {
@@ -256,55 +350,102 @@ const TemplateFormModal: React.FC<{
             {/* Structured Components (WhatsApp, Facebook, Instagram) */}
             {isStructured && channelConfig.supportsStructured && (
               <>
-                {/* Header */}
+                {/* Header (optional) */}
                 {channelConfig.supportsMedia && (
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="col-span-1">
-                      <label className="block text-sm font-medium mb-2">
-                        {t('settings.messageTemplates.form.headerFormat')}
-                      </label>
-                      <Select
-                        value={formData.headerFormat}
-                        onValueChange={(value: string) =>
-                          setFormData(prev => ({
-                            ...prev,
-                            headerFormat: value as TemplateFormData['headerFormat'],
-                          }))
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="TEXT">
-                            {t('settings.messageTemplates.form.headerFormats.text')}
-                          </SelectItem>
-                          <SelectItem value="IMAGE">
-                            {t('settings.messageTemplates.form.headerFormats.image')}
-                          </SelectItem>
-                          <SelectItem value="VIDEO">
-                            {t('settings.messageTemplates.form.headerFormats.video')}
-                          </SelectItem>
-                          <SelectItem value="DOCUMENT">
-                            {t('settings.messageTemplates.form.headerFormats.document')}
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {formData.headerFormat === 'TEXT' && (
-                      <div className="col-span-2">
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="col-span-1">
                         <label className="block text-sm font-medium mb-2">
-                          {t('settings.messageTemplates.form.headerText')}
+                          {t('settings.messageTemplates.form.headerFormat')}
                         </label>
-                        <Input
-                          value={formData.headerText}
-                          onChange={e =>
-                            setFormData(prev => ({ ...prev, headerText: e.target.value }))
+                        <Select
+                          value={formData.headerFormat || 'NONE'}
+                          onValueChange={(value: string) =>
+                            setFormData(prev => ({
+                              ...prev,
+                              headerFormat: value as TemplateFormData['headerFormat'],
+                              // Reset header-dependent fields on change
+                              headerText: value === 'TEXT' ? prev.headerText : '',
+                              headerMediaUrl: ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(value)
+                                ? prev.headerMediaUrl
+                                : '',
+                            }))
                           }
-                          placeholder={t('settings.messageTemplates.form.headerTextPlaceholder')}
-                        />
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="NONE">
+                              {t('settings.messageTemplates.form.headerFormats.none')}
+                            </SelectItem>
+                            <SelectItem value="TEXT">
+                              {t('settings.messageTemplates.form.headerFormats.text')}
+                            </SelectItem>
+                            <SelectItem value="IMAGE">
+                              {t('settings.messageTemplates.form.headerFormats.image')}
+                            </SelectItem>
+                            <SelectItem value="VIDEO">
+                              {t('settings.messageTemplates.form.headerFormats.video')}
+                            </SelectItem>
+                            <SelectItem value="DOCUMENT">
+                              {t('settings.messageTemplates.form.headerFormats.document')}
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
-                    )}
+                      {formData.headerFormat === 'TEXT' && (
+                        <div className="col-span-2">
+                          <label className="block text-sm font-medium mb-2">
+                            {t('settings.messageTemplates.form.headerText')}
+                            <span className="text-xs text-muted-foreground ml-2">
+                              {(formData.headerText || '').length}/{LIMITS.headerText}
+                            </span>
+                          </label>
+                          <Input
+                            value={formData.headerText}
+                            maxLength={LIMITS.headerText}
+                            onChange={e =>
+                              setFormData(prev => ({ ...prev, headerText: e.target.value }))
+                            }
+                            placeholder={t('settings.messageTemplates.form.headerTextPlaceholder')}
+                          />
+                        </div>
+                      )}
+                      {['IMAGE', 'VIDEO', 'DOCUMENT'].includes(formData.headerFormat || '') && (
+                        <div className="col-span-2 space-y-2">
+                          <label className="block text-sm font-medium">
+                            {t('settings.messageTemplates.form.headerMediaUpload')}
+                          </label>
+                          <input
+                            type="file"
+                            accept={
+                              formData.headerFormat === 'IMAGE'
+                                ? 'image/*'
+                                : formData.headerFormat === 'VIDEO'
+                                ? 'video/*'
+                                : '.pdf,application/pdf'
+                            }
+                            onChange={e => handleMediaFileSelect(e.target.files?.[0])}
+                            disabled={isUploadingMedia}
+                            className="block w-full text-sm file:mr-3 file:py-2 file:px-3 file:rounded-md file:border file:border-border file:bg-muted file:text-foreground hover:file:bg-muted/80 file:cursor-pointer"
+                          />
+                          {isUploadingMedia && (
+                            <p className="text-xs text-muted-foreground">
+                              {t('settings.messageTemplates.form.uploading')}
+                            </p>
+                          )}
+                          {formData.headerMediaUrl && !isUploadingMedia && (
+                            <p className="text-xs text-green-700 dark:text-green-400 break-all">
+                              ✓ {formData.headerMediaUrl}
+                            </p>
+                          )}
+                          <p className="text-xs text-muted-foreground">
+                            {t('settings.messageTemplates.form.headerMediaUrlHelp')}
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
 
@@ -312,9 +453,13 @@ const TemplateFormModal: React.FC<{
                 <div>
                   <label className="block text-sm font-medium mb-2">
                     {t('settings.messageTemplates.form.bodyText')}
+                    <span className="text-xs text-muted-foreground ml-2">
+                      {(formData.bodyText || '').length}/{LIMITS.bodyText}
+                    </span>
                   </label>
                   <Textarea
                     value={formData.bodyText}
+                    maxLength={LIMITS.bodyText}
                     onChange={e => setFormData(prev => ({ ...prev, bodyText: e.target.value }))}
                     placeholder={t('settings.messageTemplates.form.bodyTextPlaceholder')}
                     rows={4}
@@ -322,15 +467,55 @@ const TemplateFormModal: React.FC<{
                   <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                     {t('settings.messageTemplates.form.variablesHelp')}
                   </p>
+
+                  {/* Variable examples — required by Meta API when {{vars}} present */}
+                  {bodyVariables.length > 0 && (
+                    <div className="mt-3 p-3 rounded-lg border border-amber-300/30 bg-amber-50/10 dark:bg-amber-950/10 space-y-2">
+                      <div>
+                        <h4 className="text-sm font-semibold">
+                          {t('settings.messageTemplates.form.variableExamples')}
+                        </h4>
+                        <p className="text-xs text-muted-foreground">
+                          {t('settings.messageTemplates.form.variableExamplesHelp')}
+                        </p>
+                      </div>
+                      {bodyVariables.map((token, idx) => (
+                        <div key={token} className="grid grid-cols-3 gap-2 items-center">
+                          <code className="text-xs font-mono px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">
+                            {token}
+                          </code>
+                          <Input
+                            className="col-span-2"
+                            value={(formData.bodyExamples || [])[idx] || ''}
+                            onChange={e => {
+                              const v = e.target.value;
+                              setFormData(prev => {
+                                const examples = [...(prev.bodyExamples || [])];
+                                examples[idx] = v;
+                                return { ...prev, bodyExamples: examples };
+                              });
+                            }}
+                            placeholder={t(
+                              'settings.messageTemplates.form.variableExamplePlaceholder',
+                            )}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
-                {/* Footer */}
+                {/* Footer (optional) */}
                 <div>
                   <label className="block text-sm font-medium mb-2">
                     {t('settings.messageTemplates.form.footerText')}
+                    <span className="text-xs text-muted-foreground ml-2">
+                      {(formData.footerText || '').length}/{LIMITS.footerText}
+                    </span>
                   </label>
                   <Input
                     value={formData.footerText}
+                    maxLength={LIMITS.footerText}
                     onChange={e => setFormData(prev => ({ ...prev, footerText: e.target.value }))}
                     placeholder={t('settings.messageTemplates.form.footerTextPlaceholder')}
                   />
@@ -342,18 +527,26 @@ const TemplateFormModal: React.FC<{
                     <div className="flex items-center justify-between mb-2">
                       <label className="block text-sm font-medium">
                         {t('settings.messageTemplates.form.buttons')}
+                        <span className="text-xs text-muted-foreground ml-2">
+                          {formData.buttons?.length || 0}/{LIMITS.maxButtons}
+                        </span>
                       </label>
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
                         onClick={addButton}
-                        disabled={(formData.buttons?.length || 0) >= 3}
+                        disabled={(formData.buttons?.length || 0) >= LIMITS.maxButtons}
                       >
                         <Plus className="w-4 h-4 mr-2" />
                         {t('settings.messageTemplates.form.addButton')}
                       </Button>
                     </div>
+                    {(formData.buttons?.length || 0) >= LIMITS.maxButtons && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400 mb-2">
+                        {t('settings.messageTemplates.form.buttonsLimitReached')}
+                      </p>
+                    )}
 
                     {formData.buttons?.map((button, index) => (
                       <Card key={index} className="p-3 mb-2">
@@ -387,12 +580,31 @@ const TemplateFormModal: React.FC<{
                           </Button>
                         </div>
 
-                        <Input
-                          value={button.text}
-                          onChange={e => updateButton(index, 'text', e.target.value)}
-                          placeholder={t('settings.messageTemplates.form.buttonTextPlaceholder')}
-                          className="mb-2"
-                        />
+                        <div className="mb-2">
+                          <Input
+                            value={button.text}
+                            maxLength={LIMITS.buttonText}
+                            onChange={e => {
+                              const cleaned = stripEmoji(e.target.value).slice(
+                                0,
+                                LIMITS.buttonText,
+                              );
+                              if (cleaned !== e.target.value) {
+                                // User tried to paste emoji — notify once
+                                if (/[\p{Emoji}]/u.test(e.target.value)) {
+                                  toast.info(
+                                    t('settings.messageTemplates.form.buttonsNoEmoji'),
+                                  );
+                                }
+                              }
+                              updateButton(index, 'text', cleaned);
+                            }}
+                            placeholder={t('settings.messageTemplates.form.buttonTextPlaceholder')}
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {button.text.length}/{LIMITS.buttonText}
+                          </p>
+                        </div>
 
                         {button.type === 'URL' && (
                           <Input

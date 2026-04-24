@@ -22,6 +22,7 @@ import {
   Bot,
   Shield,
   Mail,
+  Phone,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -354,12 +355,15 @@ export default function ChannelSettings() {
       icon: Bot,
     });
 
-    // Moderation tab (available for all channel types)
-    baseTabs.push({
-      key: 'moderation',
-      name: t('settings.tabs.moderation'),
-      icon: Shield,
-    });
+    // Moderation tab — only for Facebook/Instagram (comment moderation).
+    // Does not apply to WhatsApp, Email, SMS, Webhook, Widget.
+    if (inboxHook.isAFacebookInbox || inboxHook.isAnInstagramChannel) {
+      baseTabs.push({
+        key: 'moderation',
+        name: t('settings.tabs.moderation'),
+        icon: Shield,
+      });
+    }
 
     return baseTabs;
   }, [inboxHook, inbox?.provider, t]);
@@ -367,17 +371,13 @@ export default function ChannelSettings() {
   // Inbox name with channel info
   const inboxName = useMemo(() => {
     if (!inbox) return '';
-    const instanceIdentifier =
-      inbox.provider_config?.instance_name ||
-      inbox.provider_config?.instanceName ||
-      inbox.provider_config?.instance ||
-      inbox.name;
 
     if (inboxHook.isATwilioSMSChannel || inboxHook.isATwilioWhatsAppChannel) {
       return `${inbox.name} (${inbox.messaging_service_sid || inbox.phone_number})`;
     }
     if (inboxHook.isAWhatsAppChannel) {
-      return `${inbox.name} (${inbox.phone_number || instanceIdentifier || '-'})`;
+      // Phone number rendered as a separate badge below the title
+      return inbox.name;
     }
     if (inboxHook.isAnEmailChannel) {
       return `${inbox.name} (${inbox.email})`;
@@ -548,16 +548,13 @@ export default function ChannelSettings() {
           </span>
         </div>
 
-        {/* Save Button */}
-        {activeTab === 'inbox_settings' ? (
+        {/* Save Button — only on the inbox_settings tab, where generic save applies.
+            Other tabs have their own contextual save buttons. */}
+        {activeTab === 'inbox_settings' && (
           <Button onClick={handleSave} disabled={isSaving} className="min-w-40">
             <Save className="h-4 w-4 mr-2" />
             {isSaving ? t('settings.saving') : t('settings.save')}
           </Button>
-        ) : (
-          <div className="text-xs text-muted-foreground">
-            {t('settings.info.tabSpecificSave')}
-          </div>
         )}
       </div>
 
@@ -576,6 +573,14 @@ export default function ChannelSettings() {
               )}
               <div>
                 <h1 className="text-3xl font-bold text-foreground">{inboxName}</h1>
+                {inboxHook.isAWhatsAppChannel && inbox?.phone_number && (
+                  <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700">
+                    <Phone className="w-4 h-4 text-green-700 dark:text-green-400" />
+                    <span className="text-sm font-mono font-semibold text-green-800 dark:text-green-300">
+                      {inbox.phone_number}
+                    </span>
+                  </div>
+                )}
                 <p className="text-muted-foreground mt-1">{t('settings.description')}</p>
               </div>
             </div>

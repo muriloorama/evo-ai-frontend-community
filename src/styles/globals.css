@@ -3,6 +3,27 @@
 /* Define o variant dark para o Tailwind v4 */
 @custom-variant dark (&:is(.dark *));
 
+/* Mobile: trava o bounce do iOS e o pull-to-refresh do Android, e fixa o
+   app no viewport dinâmico. Sem isso o usuário puxa a página inteira e o
+   topo/base do layout some atrás das barras do navegador. */
+html, body {
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+  touch-action: manipulation;
+}
+html {
+  height: 100%;
+}
+body {
+  min-height: 100dvh;
+  position: relative;
+  overflow: hidden;
+}
+#root {
+  height: 100dvh;
+  overflow: hidden;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

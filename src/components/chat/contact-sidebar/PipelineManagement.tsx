@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@evoapi/design-system/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@evoapi/design-system/select';
-import { Label } from '@evoapi/design-system/label';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,7 +11,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@evoapi/design-system/alert-dialog';
-import { Loader2, GitBranch, Trash2, Save, AlertTriangle } from 'lucide-react';
+import { GitBranch, Trash2, AlertTriangle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { pipelinesService } from '@/services/pipelines/pipelinesService';
 import type { Pipeline, PipelineItem, PipelineStage } from '@/types/analytics';
@@ -39,7 +38,6 @@ const PipelineManagement: React.FC<PipelineManagementProps> = ({
   const [selectedPipelineId, setSelectedPipelineId] = useState<string>('');
   const [selectedStageId, setSelectedStageId] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
-  const [showSaveConfirm, setShowSaveConfirm] = useState(false);
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
   const [originalPipelines, setOriginalPipelines] = useState<Pipeline[]>([]);
 
@@ -73,8 +71,6 @@ const PipelineManagement: React.FC<PipelineManagementProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId, pipelines]);
 
-  const selectedPipeline = pipelines.find(p => String(p.id) === selectedPipelineId);
-
   // Load stages when pipeline is selected
   const [availableStages, setAvailableStages] = useState<PipelineStage[]>([]);
 
@@ -101,30 +97,13 @@ const PipelineManagement: React.FC<PipelineManagementProps> = ({
     loadStages();
   }, [selectedPipelineId, originalPipelines]);
 
-  const handlePipelineChange = (value: string) => {
-    setSelectedPipelineId(value);
-    // Reset stage when pipeline changes
-    setSelectedStageId('');
-  };
-
-  const handleSaveClick = () => {
-    if (!selectedPipelineId || !selectedStageId) {
-      toast.error(t('contactSidebar.pipeline.selectError'));
-      return;
-    }
-    setShowSaveConfirm(true);
-  };
-
-  const confirmSave = async () => {
-    if (!selectedPipelineId || !selectedStageId) return;
-
+  const applyChange = async (pipelineId: string, stageId: string) => {
+    if (!pipelineId || !stageId) return;
     try {
       setIsSaving(true);
-      setShowSaveConfirm(false);
 
-      // Find the pipeline item for this conversation by searching through stages
       const conversationPipeline = pipelines?.find(
-        (pipeline: Pipeline) => String(pipeline.id) === selectedPipelineId
+        (pipeline: Pipeline) => String(pipeline.id) === pipelineId
       );
 
       let conversationItem: PipelineItem | undefined;
@@ -141,18 +120,17 @@ const PipelineManagement: React.FC<PipelineManagementProps> = ({
       }
 
       if (conversationItem) {
-        // Use move_to_stage endpoint (same as Kanban drag-and-drop)
         await pipelinesService.moveItem({
           item_id: conversationItem.id,
-          pipeline_id: selectedPipelineId,
+          pipeline_id: pipelineId,
           from_stage_id: conversationItem.stage_id,
-          to_stage_id: selectedStageId,
+          to_stage_id: stageId,
         });
       } else {
-        await pipelinesService.addItemToPipeline(selectedPipelineId, {
+        await pipelinesService.addItemToPipeline(pipelineId, {
           item_id: conversationId,
           type: 'conversation',
-          pipeline_stage_id: selectedStageId,
+          pipeline_stage_id: stageId,
         });
       }
 
@@ -164,6 +142,20 @@ const PipelineManagement: React.FC<PipelineManagementProps> = ({
       toast.error(t('contactSidebar.pipeline.saveError'));
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Auto-save on any pipeline change (no confirm dialog).
+  const handlePipelineChange = (value: string) => {
+    setSelectedPipelineId(value);
+    setSelectedStageId(''); // reset stage, user will pick next
+  };
+
+  // Auto-save on stage change — triggered every time user picks a new stage.
+  const handleStageChange = (value: string) => {
+    setSelectedStageId(value);
+    if (selectedPipelineId && value) {
+      applyChange(selectedPipelineId, value);
     }
   };
 
@@ -195,27 +187,12 @@ const PipelineManagement: React.FC<PipelineManagementProps> = ({
   };
 
   return (
-    <div className="space-y-4">
-      {/* Current Pipeline Status */}
-      {currentPipeline && (
-        <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
-          <div className="flex items-center gap-2 mb-1">
-            <GitBranch className="h-4 w-4 text-primary" />
-            <span className="text-sm font-medium">{t('contactSidebar.pipeline.current')}</span>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {currentPipeline.pipeline.name} • {currentPipeline.stage.name}
-          </p>
-        </div>
-      )}
-
-      {/* Pipeline Selection */}
-      <div className="space-y-2">
-        <Label htmlFor="pipeline-select" className="text-xs font-medium">
-          {t('contactSidebar.pipeline.label')}
-        </Label>
-        <Select value={selectedPipelineId} onValueChange={handlePipelineChange}>
-          <SelectTrigger id="pipeline-select">
+    <div className="space-y-2">
+      {/* Pipeline + Stage inline — auto-saves on change */}
+      <div className="flex items-center gap-1.5">
+        <GitBranch className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+        <Select value={selectedPipelineId} onValueChange={handlePipelineChange} disabled={isSaving}>
+          <SelectTrigger className="h-8 text-xs flex-1">
             <SelectValue placeholder={t('contactSidebar.pipeline.selectPipeline')} />
           </SelectTrigger>
           <SelectContent>
@@ -226,16 +203,25 @@ const PipelineManagement: React.FC<PipelineManagementProps> = ({
             ))}
           </SelectContent>
         </Select>
+        {currentPipeline && (
+          <Button
+            onClick={handleRemoveClick}
+            disabled={isSaving}
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+            title="Remover do pipeline"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        )}
       </div>
 
-      {/* Stage Selection */}
       {selectedPipelineId && (
-        <div className="space-y-2">
-          <Label htmlFor="stage-select" className="text-xs font-medium">
-            {t('contactSidebar.pipeline.stage')}
-          </Label>
-          <Select value={selectedStageId} onValueChange={setSelectedStageId}>
-            <SelectTrigger id="stage-select">
+        <div className="flex items-center gap-1.5">
+          <div className="w-3.5 h-3.5 flex-shrink-0" />
+          <Select value={selectedStageId} onValueChange={handleStageChange} disabled={isSaving}>
+            <SelectTrigger className="h-8 text-xs flex-1">
               <SelectValue placeholder={t('contactSidebar.pipeline.selectStage')} />
             </SelectTrigger>
             <SelectContent>
@@ -248,115 +234,9 @@ const PipelineManagement: React.FC<PipelineManagementProps> = ({
                 ))}
             </SelectContent>
           </Select>
+          {isSaving && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
         </div>
       )}
-
-      {/* Actions */}
-      <div className="flex gap-2">
-        <Button
-          onClick={handleSaveClick}
-          disabled={!selectedPipelineId || !selectedStageId || isSaving}
-          className="flex-1"
-          size="sm"
-        >
-          {isSaving ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              {t('contactSidebar.pipeline.saving')}
-            </>
-          ) : (
-            <>
-              <Save className="mr-2 h-4 w-4" />
-              {t('contactSidebar.pipeline.save')}
-            </>
-          )}
-        </Button>
-        {currentPipeline && (
-          <Button onClick={handleRemoveClick} disabled={isSaving} variant="outline" size="sm">
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        )}
-      </div>
-
-      {/* Save Confirmation Dialog */}
-      <AlertDialog open={showSaveConfirm} onOpenChange={setShowSaveConfirm}>
-        <AlertDialogContent className="max-w-md">
-          <AlertDialogHeader className="text-left space-y-4">
-            <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 w-12 h-12 bg-blue-500/10 rounded-full flex items-center justify-center">
-                <GitBranch className="h-6 w-6 text-blue-500" />
-              </div>
-              <div className="flex-1 space-y-2">
-                <AlertDialogTitle className="text-lg font-semibold">
-                  {currentPipeline
-                    ? t('contactSidebar.pipeline.dialogs.update.title')
-                    : t('contactSidebar.pipeline.dialogs.add.title')}
-                </AlertDialogTitle>
-                <AlertDialogDescription className="text-sm text-muted-foreground leading-relaxed">
-                  {currentPipeline ? (
-                    <>
-                      {(() => {
-                        const stageName =
-                          availableStages.find(s => String(s.id) === selectedStageId)?.name || '';
-                        const parts = t('contactSidebar.pipeline.dialogs.update.description', {
-                          pipelineName: selectedPipeline?.name || '',
-                          stageName: stageName,
-                        }).split(selectedPipeline?.name || '');
-                        const stageParts = parts[1]?.split(stageName) || [];
-                        return (
-                          <>
-                            {parts[0]}
-                            <strong>{selectedPipeline?.name}</strong>
-                            {stageParts[0]}
-                            <strong>{stageName}</strong>
-                            {stageParts[1]}
-                          </>
-                        );
-                      })()}
-                    </>
-                  ) : (
-                    <>
-                      {(() => {
-                        const stageName =
-                          availableStages.find(s => String(s.id) === selectedStageId)?.name || '';
-                        const parts = t('contactSidebar.pipeline.dialogs.add.description', {
-                          pipelineName: selectedPipeline?.name || '',
-                          stageName: stageName,
-                        }).split(selectedPipeline?.name || '');
-                        const stageParts = parts[1]?.split(stageName) || [];
-                        return (
-                          <>
-                            {parts[0]}
-                            <strong>{selectedPipeline?.name}</strong>
-                            {stageParts[0]}
-                            <strong>{stageName}</strong>
-                            {stageParts[1]}
-                          </>
-                        );
-                      })()}
-                    </>
-                  )}
-                </AlertDialogDescription>
-              </div>
-            </div>
-          </AlertDialogHeader>
-
-          <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-3 sm:gap-3">
-            <AlertDialogCancel className="w-full sm:w-auto">
-              {t('contactSidebar.pipeline.dialogs.remove.cancel')}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmSave}
-              className="w-full sm:w-auto bg-blue-500 text-white hover:bg-blue-600 focus:ring-blue-500"
-            >
-              <Save className="h-4 w-4 mr-2" />
-              {currentPipeline
-                ? t('contactSidebar.pipeline.dialogs.update.confirm')
-                : t('contactSidebar.pipeline.dialogs.add.confirm')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Remove Confirmation Dialog */}
       <AlertDialog open={showRemoveConfirm} onOpenChange={setShowRemoveConfirm}>

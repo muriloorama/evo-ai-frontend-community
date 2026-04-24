@@ -86,15 +86,15 @@ const FilePreview: React.FC<FilePreviewProps> = ({
                 )}
               </div>
 
-              {/* Remove Button */}
+              {/* Remove Button — sempre visível no mobile (sem hover), maior touch target */}
               <Button
                 variant="destructive"
                 size="sm"
                 onClick={() => onRemove(index)}
                 disabled={isSending}
-                className="absolute -top-2 -right-2 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute -top-2 -right-2 h-7 w-7 md:h-6 md:w-6 p-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shadow-md"
               >
-                <X className="h-3 w-3" />
+                <X className="h-3.5 w-3.5 md:h-3 md:w-3" />
               </Button>
 
               {/* Progress Overlay */}
@@ -125,8 +125,12 @@ const FilePreview: React.FC<FilePreviewProps> = ({
             {t('messageInput.filePreview.sending')}
           </div>
         ) : (
-          <Button size="sm" onClick={() => onSend(files)} className="gap-1 h-7 text-xs">
-            <Send className="h-3 w-3" />
+          <Button
+            size="sm"
+            onClick={() => onSend(files)}
+            className="gap-1.5 h-9 md:h-7 px-3 text-sm md:text-xs"
+          >
+            <Send className="h-4 w-4 md:h-3 md:w-3" />
             {t('messageInput.filePreview.send')}
           </Button>
         )}

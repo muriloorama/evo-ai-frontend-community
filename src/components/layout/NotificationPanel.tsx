@@ -14,6 +14,7 @@ import NotificationItem from './NotificationItem';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { Notification } from '@/services/notifications/NotificationsService';
+import { useAccountPath } from '@/hooks/useAccountPath';
 
 interface NotificationPanelProps {
   onClose: () => void;
@@ -26,6 +27,7 @@ export default function NotificationPanel({
 }: NotificationPanelProps) {
   const { t } = useLanguage('layout');
   const navigate = useNavigate();
+  const buildAccountPath = useAccountPath();
   const { state, actions } = useNotifications();
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -60,9 +62,12 @@ export default function NotificationPanel({
       // Mark as read
       await actions.markAsRead(notification);
 
-      // Navigate to conversation
+      // Navigate to conversation. Prefer display_id (Chatwoot-style pretty URL)
+      // when the serializer included it; fall back to UUID which the backend
+      // resolves just the same.
       if (notification.primary_actor?.id) {
-        navigate(`/conversations/${notification.primary_actor.id}`);
+        const urlId = notification.primary_actor.display_id ?? notification.primary_actor.id;
+        navigate(buildAccountPath(`/conversations/${urlId}`));
         onClose();
       }
     } catch (error) {

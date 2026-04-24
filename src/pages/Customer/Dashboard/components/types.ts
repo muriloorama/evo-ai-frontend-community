@@ -3,6 +3,8 @@ export interface DashboardFilterState {
   teamId: string;
   inboxId: string;
   userId: string;
+  // 'visitor' | 'lead' | 'customer' | '' (all)
+  contactType: string;
   since: string;
   until: string;
 }

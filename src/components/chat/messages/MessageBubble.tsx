@@ -18,8 +18,10 @@ import {
   AlertDialogTitle,
 } from '@evoapi/design-system/alert-dialog';
 import { LockIcon, Reply, Copy, Trash2, AlertTriangle, Shield, Ban } from 'lucide-react';
+import { toast } from 'sonner';
 import { Message, MESSAGE_TYPE } from '@/types/chat/api';
 import { useLanguage } from '@/hooks/useLanguage';
+import api from '@/services/core/api';
 import MessageText from '@/components/chat/messages/MessageText';
 import MessageImage from '@/components/chat/messages/MessageImage';
 import MessageFile from '@/components/chat/messages/MessageFile';
@@ -94,6 +96,19 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       ? allMessages.find(msg => msg.source_id && String(msg.source_id) === String(replyToExternalId))
       : null;
 
+  // 👍 REACTIONS: list emojis pinned to this bubble. The reactionMessage is
+  // stored as its own row with `is_reaction = true` and `in_reply_to_external_id`
+  // pointing at the parent's source_id (or `in_reply_to` for internal id).
+  const reactionEntries = allMessages.filter(msg => {
+    if (!msg.content_attributes?.is_reaction) return false;
+    if (!msg.content) return false;
+    const targetExternal = msg.content_attributes?.in_reply_to_external_id;
+    const targetInternal = msg.content_attributes?.in_reply_to;
+    if (targetInternal && String(targetInternal) === String(message.id)) return true;
+    if (targetExternal && message.source_id && String(targetExternal) === String(message.source_id)) return true;
+    return false;
+  });
+
   const handleCopyMessage = () => {
     if (message.content) {
       navigator.clipboard.writeText(message.content);
@@ -107,6 +122,24 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   const handleDeleteMessage = () => {
     setShowDeleteDialog(true);
+  };
+
+  // Quick reactions the agent can send back to the contact via the Meta
+  // Cloud API. Picked to cover the "thumbs up / love / laugh / wow" space
+  // that covers 90% of WhatsApp reaction usage.
+  const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮'];
+
+  const handleSendReaction = async (emoji: string) => {
+    if (!message?.id || !message?.conversation_id) return;
+    try {
+      await api.post(`/conversations/${message.conversation_id}/messages/${message.id}/react`, {
+        emoji,
+      });
+    } catch (err) {
+      const detail = (err as { response?: { data?: { message?: string } } })?.response?.data
+        ?.message;
+      toast.error(detail || t('messages.messageBubble.contextMenu.reactionFailed'));
+    }
   };
 
   const confirmDeleteMessage = async () => {
@@ -127,6 +160,28 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       <ContextMenu>
         <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
         <ContextMenuContent className="w-48">
+          {/* Quick reactions — only shown for incoming messages that have a
+              WhatsApp external id we can target. Outgoing messages and
+              reaction rows themselves can't be re-reacted to. */}
+          {!isOwn && !(message.content_attributes as { is_reaction?: boolean })?.is_reaction &&
+            message.source_id && (
+              <>
+                <div className="flex justify-center gap-1 px-2 py-1.5">
+                  {QUICK_REACTIONS.map(emoji => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => handleSendReaction(emoji)}
+                      className="text-lg leading-none p-1 rounded hover:bg-accent transition-colors"
+                      aria-label={`React with ${emoji}`}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+                <ContextMenuSeparator />
+              </>
+            )}
           {canReply && (
             <ContextMenuItem onClick={handleReplyMessage} className="flex items-center gap-2">
               <Reply className="h-4 w-4" />
@@ -396,7 +451,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         </div>
       )}
 
-      <div className={`${isThreadReply ? 'max-w-[calc(70%-2rem)]' : 'max-w-[70%]'} ${isOwn ? 'ml-auto' : ''}`}>
+      <div className={`${isThreadReply ? 'max-w-[calc(85%-2rem)] md:max-w-[calc(70%-2rem)]' : 'max-w-[85%] md:max-w-[70%]'} ${isOwn ? 'ml-auto' : ''}`}>
         {/* 📛 Nome: mostrar apenas para contatos (lado esquerdo) - sempre mostrar em replies */}
         {!isOwn && (isThreadReply || !showAvatar) && (
           <div className="text-xs mb-1 flex items-center gap-1.5 text-muted-foreground">
@@ -404,13 +459,23 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           </div>
         )}
 
-        {/* 📛 Nome do Agente: mostrar para mensagens de agentes (lado direito) */}
+        {/* 📛 Nome do Agente: mostrar para mensagens de agentes (lado direito).
+            Quando a mensagem chegou via webhook (eco do WhatsApp do celular do
+            operador), mostra "Celular" no lugar do nome do atendente. */}
         {isOwn && isFromAgent && (
           <div className="text-xs mb-1 flex items-center justify-end gap-1.5 text-muted-foreground">
-            <Badge variant="outline" className="h-4 px-1 text-[10px] font-medium bg-primary/10 text-primary border border-primary/30 dark:bg-primary/20 dark:text-primary dark:border-primary/50">
-              {t('messages.messageBubble.agent.badge')}
-            </Badge>
-            {message.sender?.name || t('messages.messageBubble.agent.fallback')}
+            {message.content_attributes?.external_origin ? (
+              <Badge variant="outline" className="h-4 px-1 text-[10px] font-medium bg-muted text-muted-foreground border border-border">
+                📱 {t('messages.messageBubble.agent.fromPhone')}
+              </Badge>
+            ) : (
+              <>
+                <Badge variant="outline" className="h-4 px-1 text-[10px] font-medium bg-primary/10 text-primary border border-primary/30 dark:bg-primary/20 dark:text-primary dark:border-primary/50">
+                  {t('messages.messageBubble.agent.badge')}
+                </Badge>
+                {message.sender?.name || t('messages.messageBubble.agent.fallback')}
+              </>
+            )}
           </div>
         )}
 
@@ -438,8 +503,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                     : isOwn
                       ? 'bg-primary text-primary-foreground hover:bg-primary/85'
                       : isThreadReply
-                        ? 'bg-muted/70 border border-l-2 border-l-primary/40 dark:bg-muted/50' // Estilo mais sutil para replies
-                        : 'bg-muted border'
+                        ? 'bg-muted/70 text-foreground border border-l-2 border-l-primary/40 dark:bg-muted/50'
+                        : 'bg-muted text-foreground border'
               }`}
           >
             {/* Indicador de mensagem privada */}
@@ -479,6 +544,20 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 
             <div className={isDeleted ? 'opacity-60' : ''}>{renderMessageContent()}</div>
           </div>,
+        )}
+
+        {reactionEntries.length > 0 && (
+          <div className={`flex flex-wrap gap-1 mt-1 ${isOwn ? 'justify-end' : 'justify-start'}`}>
+            {reactionEntries.map(reaction => (
+              <span
+                key={`reaction-${reaction.id}`}
+                className="inline-flex items-center text-base leading-none rounded-full bg-background/90 border px-1.5 py-0.5 shadow-sm"
+                title={reaction.sender?.name || ''}
+              >
+                {reaction.content}
+              </span>
+            ))}
+          </div>
         )}
 
         {showTimestamp && <MessageStatus message={message} isOwn={isOwn} onRetry={onRetry} />}

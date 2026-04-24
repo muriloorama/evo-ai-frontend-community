@@ -224,6 +224,11 @@ export interface PipelineItem {
     formatted_total: string;
     services_count: number;
     has_services: boolean;
+    services?: Array<{
+      name: string;
+      value: number;
+      service_definition_id?: string;
+    }>;
   };
   tasks_info: {
     pending_count: number;

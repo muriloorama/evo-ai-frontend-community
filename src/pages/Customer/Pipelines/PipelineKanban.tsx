@@ -9,7 +9,6 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  Badge,
 } from '@evoapi/design-system';
 import {
   ArrowLeft,
@@ -20,15 +19,8 @@ import {
   Trash2,
   Copy,
   ArrowUpDown,
-  Phone,
-  Mail,
-  MessageSquare,
   User,
   CalendarClock,
-  ListTodo,
-  AlertCircle,
-  Clock,
-  CheckCircle2,
 } from 'lucide-react';
 
 import { pipelinesService } from '@/services/pipelines';
@@ -63,6 +55,9 @@ export default function PipelineKanban() {
   const [draggedItem, setDraggedItem] = useState<PipelineItem | null>(null);
   const isDraggingRef = useRef(false);
   const suppressClickUntilRef = useRef(0);
+
+  // Mobile: estágio selecionado para vista vertical (stack filtrado)
+  const [activeMobileStageId, setActiveMobileStageId] = useState<string | null>(null);
 
   // Modal states
   const [showEditPipelineModal, setShowEditPipelineModal] = useState(false);
@@ -128,6 +123,17 @@ export default function PipelineKanban() {
     loadPipelineData();
     loadAllPipelines();
   }, [loadPipelineData, loadAllPipelines]);
+
+  // Garantir estágio mobile válido após carregar/mudar pipeline
+  useEffect(() => {
+    if (stages.length === 0) {
+      setActiveMobileStageId(null);
+      return;
+    }
+    if (!activeMobileStageId || !stages.some(s => s.id === activeMobileStageId)) {
+      setActiveMobileStageId(stages[0].id);
+    }
+  }, [stages, activeMobileStageId]);
 
   // Handle pipeline change
   const handlePipelineChange = (newPipelineId: string) => {
@@ -447,22 +453,25 @@ export default function PipelineKanban() {
     );
   }
 
+  const activeMobileStage = stages.find(s => s.id === activeMobileStageId) || stages[0] || null;
+
   return (
     <div className="flex w-full h-full min-w-0 overflow-hidden">
       <div className="flex-1 h-full flex flex-col bg-muted/30 min-w-0">
         {/* Header */}
         <div className="flex-shrink-0 bg-background border-b border-border shadow-sm">
-          <div className="px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col gap-3 py-3 lg:h-16 lg:flex-row lg:items-center lg:justify-between lg:py-0">
+          <div className="px-3 sm:px-6 lg:px-8">
+            <div className="flex flex-col gap-2 py-2 md:gap-3 md:py-3 lg:h-16 lg:flex-row lg:items-center lg:justify-between lg:py-0">
               {/* Navigation and Pipeline Info */}
-              <div className="flex items-center gap-3 min-w-0">
+              <div className="flex items-center gap-2 md:gap-3 min-w-0">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => navigate('/pipelines')}
-                  className="text-muted-foreground hover:text-foreground"
+                  className="h-10 w-10 md:h-9 md:w-auto p-0 md:px-3 text-muted-foreground hover:text-foreground shrink-0"
+                  aria-label="Voltar"
                 >
-                  <ArrowLeft className="w-4 h-4" />
+                  <ArrowLeft className="w-5 h-5 md:w-4 md:h-4" />
                 </Button>
 
                 <div className="flex-1 min-w-0 max-w-full lg:max-w-2xl">
@@ -473,10 +482,45 @@ export default function PipelineKanban() {
                     onSwitchPipeline={handlePipelineChange}
                   />
                 </div>
+
+                {/* Mobile: ações compactas (add + menu) à direita do switcher */}
+                <div className="flex items-center gap-1 lg:hidden shrink-0">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => handleAddItem(activeMobileStage || undefined)}
+                    className="h-10 w-10 p-0"
+                    aria-label={t('kanban.header.addItem')}
+                  >
+                    <Plus className="w-5 h-5" />
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="h-10 w-10 p-0" aria-label="Opções do pipeline">
+                        <MoreVertical className="w-5 h-5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={handleEditPipeline}>
+                        <Edit className="h-4 w-4 mr-2" />
+                        {t('kanban.header.editPipeline')}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleReorderStages}>
+                        <ArrowUpDown className="h-4 w-4 mr-2" />
+                        {t('kanban.header.reorderStages')}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem className="text-destructive" onClick={handleDeletePipeline}>
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        {t('kanban.header.deletePipeline')}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
 
-              {/* Quick Stats and Actions */}
-              <div className="flex w-full flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm lg:w-auto">
+              {/* Quick Stats and Actions (desktop) */}
+              <div className="hidden lg:flex w-full flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm lg:w-auto">
                 <div className="text-center min-w-16">
                   <div className="font-semibold text-foreground">
                     {pipeline?.item_count || pipeline?.conversations_count || 0}
@@ -540,11 +584,256 @@ export default function PipelineKanban() {
                 </DropdownMenu>
               </div>
             </div>
+
+            {/* Mobile: estatísticas em linha compacta */}
+            <div className="lg:hidden flex items-center gap-3 pb-2 text-xs text-muted-foreground overflow-x-auto">
+              <span><span className="font-semibold text-foreground">{pipeline?.item_count || pipeline?.conversations_count || 0}</span> {t('kanban.header.conversations')}</span>
+              <span className="text-muted-foreground/50">·</span>
+              <span><span className="font-semibold text-foreground">{stages.length}</span> {t('kanban.header.stages')}</span>
+              {calculatePipelineTotal() > 0 && (
+                <>
+                  <span className="text-muted-foreground/50">·</span>
+                  <span className="whitespace-nowrap"><span className="font-semibold text-green-600 dark:text-green-400">R$ {formatCurrency(calculatePipelineTotal())}</span></span>
+                </>
+              )}
+            </div>
           </div>
+
+          {/* Mobile: pills horizontais de estágios */}
+          {stages.length > 0 && (
+            <div className="lg:hidden border-t border-border bg-muted/30">
+              <div className="overflow-x-auto scrollbar-hidden">
+                <div className="flex items-center gap-2 px-3 py-2 min-w-max">
+                  {stages.map(stage => {
+                    const isActive = stage.id === activeMobileStage?.id;
+                    const count = stage.items?.length ?? stage.item_count ?? 0;
+                    return (
+                      <button
+                        key={stage.id}
+                        type="button"
+                        onClick={() => setActiveMobileStageId(stage.id)}
+                        className={`flex items-center gap-2 h-9 px-3 rounded-full border text-sm whitespace-nowrap transition-colors ${
+                          isActive
+                            ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                            : 'bg-background text-foreground border-border hover:bg-accent'
+                        }`}
+                      >
+                        <span
+                          className="w-2 h-2 rounded-full shrink-0"
+                          style={{ backgroundColor: stage.color }}
+                        />
+                        <span className="font-medium">{stage.name}</span>
+                        <span className={`text-xs px-1.5 py-0.5 rounded-full ${isActive ? 'bg-primary-foreground/20' : 'bg-muted'}`}>
+                          {count}
+                        </span>
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateStageModal(true)}
+                    className="flex items-center gap-1 h-9 px-3 rounded-full border border-dashed border-border text-sm text-muted-foreground hover:text-primary hover:border-primary/50 whitespace-nowrap"
+                    aria-label={t('kanban.stage.addStage')}
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Kanban Board */}
-        <div className="flex-1 overflow-hidden">
+        {/* Kanban Board — Mobile: single-stage vertical stack */}
+        <div className="flex-1 overflow-hidden lg:hidden">
+          {activeMobileStage ? (
+            <div className="h-full overflow-y-auto px-3 py-3 space-y-3">
+              {/* Stage header info */}
+              <div
+                className="rounded-xl border border-border bg-background px-3 py-2.5 flex items-center justify-between gap-2 border-l-4 shadow-sm"
+                style={{ borderLeftColor: activeMobileStage.color }}
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-semibold text-foreground truncate">
+                      {activeMobileStage.name}
+                    </h3>
+                    <span className="bg-muted text-muted-foreground text-xs px-2 py-0.5 rounded-full shrink-0">
+                      {activeMobileStage.items?.length ?? activeMobileStage.item_count ?? 0}
+                    </span>
+                  </div>
+                  {calculateStageTotal(activeMobileStage.items) > 0 && (
+                    <div className="text-xs text-green-600 dark:text-green-400 font-medium mt-0.5">
+                      {t('kanban.stage.totalValue', {
+                        value: formatCurrency(calculateStageTotal(activeMobileStage.items)),
+                      })}
+                    </div>
+                  )}
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-10 w-10 p-0 shrink-0" aria-label="Opções do estágio">
+                      <MoreVertical className="w-5 h-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => handleAddItem(activeMobileStage)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      {t('kanban.header.addItem')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleEditStage(activeMobileStage)}>
+                      <Edit className="h-4 w-4 mr-2" />
+                      {t('kanban.stage.editStage')}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="text-destructive"
+                      onClick={() => handleDeleteStage(activeMobileStage)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      {t('kanban.stage.deleteStage')}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
+              {/* Items - cards confortáveis pro toque */}
+              {(activeMobileStage.items || []).map(item => (
+                <div
+                  key={item.id}
+                  className="bg-background rounded-xl p-3 border border-border shadow-sm active:bg-accent/50 transition-colors cursor-pointer select-none"
+                  onClick={() => handleEditItem(item)}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="relative w-11 h-11 shrink-0">
+                      <div
+                        className="absolute inset-0 rounded-full flex items-center justify-center text-white text-base font-bold shadow-sm"
+                        style={{ backgroundColor: getContactColor(item.contact?.name) }}
+                      >
+                        {item.contact?.name?.[0]?.toUpperCase() || 'U'}
+                      </div>
+                      {((item.contact as any)?.avatar_url || (item.contact as any)?.thumbnail) && (
+                        <img
+                          src={(item.contact as any).avatar_url || (item.contact as any).thumbnail}
+                          alt={item.contact?.name || ''}
+                          className="absolute inset-0 w-11 h-11 rounded-full object-cover shadow-sm"
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                        />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-semibold text-foreground truncate flex-1 min-w-0">
+                          {item.contact?.name || t('kanban.conversation.unknownUser')}
+                        </h4>
+                        {!item.is_lead && item.conversation?.status && (
+                          <span
+                            className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ${
+                              item.conversation.status === 'open'
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                                : item.conversation.status === 'resolved'
+                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+                                : 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
+                            }`}
+                          >
+                            {item.conversation.status === 'open'
+                              ? 'Aberto'
+                              : item.conversation.status === 'resolved'
+                              ? 'Resolvido'
+                              : item.conversation.status}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                        {item.conversation?.last_activity_at
+                          ? new Date(item.conversation.last_activity_at * 1000).toLocaleDateString('pt-BR')
+                          : new Date((item.entered_at || 0) * 1000).toLocaleDateString('pt-BR')}
+                        {item.conversation?.assignee && (
+                          <> · {item.conversation.assignee.name}</>
+                        )}
+                      </div>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                        <Button variant="ghost" size="sm" className="h-10 w-10 p-0 shrink-0" aria-label="Opções do card">
+                          <MoreVertical className="w-5 h-5" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenuItem onClick={() => handleEditItem(item)}>
+                          <Edit className="h-4 w-4 mr-2" />
+                          {t('kanban.item.editItem')}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setSelectedConversationForSchedule(item);
+                            setScheduleActionOpen(true);
+                          }}
+                        >
+                          <CalendarClock className="h-4 w-4 mr-2" />
+                          {t('kanban.item.scheduleAction')}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() => handleRemoveItem(item)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          {t('kanban.item.removeFromPipeline')}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+
+                  {/* Serviços com valores */}
+                  {item.services_info?.has_services && (item.services_info.services?.length ?? 0) > 0 && (
+                    <div className="mt-2 p-2 rounded-md bg-muted/40 border border-border/60 text-xs space-y-0.5">
+                      {item.services_info.services?.map((svc, idx) => (
+                        <div key={`${svc.name}-${idx}`} className="flex items-center justify-between gap-2">
+                          <span className="truncate text-foreground">{svc.name}</span>
+                          <span className="text-muted-foreground whitespace-nowrap">
+                            {item.services_info?.currency}{' '}
+                            {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(svc.value)}
+                          </span>
+                        </div>
+                      ))}
+                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/60 font-medium">
+                        <span className="text-foreground">Total</span>
+                        <span className="text-green-600 dark:text-green-400 whitespace-nowrap">
+                          {item.services_info.currency} {item.services_info.formatted_total}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {/* Empty state */}
+              {(!activeMobileStage.items || activeMobileStage.items.length === 0) && (
+                <div className="text-center py-12 text-muted-foreground">
+                  <div className="text-sm mb-3">{t('kanban.stage.noConversations')}</div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleAddItem(activeMobileStage)}
+                    className="h-10"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    {t('kanban.header.addItem')}
+                  </Button>
+                </div>
+              )}
+
+              <div className="h-4" />
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-full p-6 text-center text-muted-foreground text-sm">
+              {t('kanban.stage.noStages')}
+            </div>
+          )}
+        </div>
+
+        {/* Kanban Board — Desktop: horizontal columns */}
+        <div className="flex-1 overflow-hidden hidden lg:block">
           <div className="h-full overflow-x-auto overflow-y-hidden px-4 sm:px-6 lg:px-8 py-6">
             {/* Kanban Content */}
             <div
@@ -687,259 +976,86 @@ export default function PipelineKanban() {
                             </div>
                           </div>
 
-                          {/* Contact Info Header */}
-                          <div className="flex items-start space-x-3 mb-3">
-                            <div className="relative">
+                          {/* Contact Info Header — simples: avatar + nome + status aberto/resolvido */}
+                          <div className="flex items-center gap-2.5 mb-2">
+                            <div className="relative w-10 h-10 shrink-0">
                               <div
-                                className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-sm"
-                                style={{
-                                  backgroundColor: getContactColor(item.contact?.name),
-                                }}
+                                className="absolute inset-0 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-sm"
+                                style={{ backgroundColor: getContactColor(item.contact?.name) }}
                               >
                                 {item.contact?.name?.[0]?.toUpperCase() || 'U'}
                               </div>
-                              {/* Online indicator */}
-                              <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 border-2 border-background rounded-full" />
+                              {((item.contact as any)?.avatar_url || (item.contact as any)?.thumbnail) && (
+                                <img
+                                  src={(item.contact as any).avatar_url || (item.contact as any).thumbnail}
+                                  alt={item.contact?.name || ''}
+                                  className="absolute inset-0 w-10 h-10 rounded-full object-cover shadow-sm"
+                                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                                />
+                              )}
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center space-x-2 mb-1">
-                                <h4 className="text-sm font-semibold text-foreground truncate">
-                                  {item.contact?.name || t('kanban.conversation.unknownUser')}
-                                </h4>
-                                <span className="text-xs text-muted-foreground font-medium">
-                                  #{item.conversation?.display_id}
-                                </span>
-                              </div>
-                              {/* Contact details */}
-                              <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-                                {item.contact?.phone_number && (
-                                  <span className="flex items-center space-x-1">
-                                    <Phone className="w-3 h-3" />
-                                    <span className="truncate max-w-20">
-                                      {item.contact.phone_number}
-                                    </span>
-                                  </span>
-                                )}
-                                {item.contact?.email && (
-                                  <span className="flex items-center space-x-1">
-                                    <Mail className="w-3 h-3" />
-                                    <span className="truncate max-w-20">{item.contact?.email}</span>
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Last Message Preview */}
-                          {item.conversation?.last_non_activity_message?.content && (
-                            <div className="mb-3 p-3 bg-muted/50 rounded-lg border border-border">
-                              <div className="flex items-start space-x-2">
-                                <MessageSquare className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center space-x-2 mb-1">
-                                    <span className="text-xs font-medium text-foreground">
-                                      {item.conversation.last_non_activity_message.sender?.name ||
-                                        t('kanban.conversation.system')}
-                                    </span>
-                                  </div>
-                                  <p
-                                    className="text-sm text-foreground line-clamp-2 leading-relaxed [&_p]:inline [&_br]:hidden"
-                                    dangerouslySetInnerHTML={{
-                                      __html:
-                                        item.conversation.last_non_activity_message
-                                          .processed_message_content ||
-                                        item.conversation.last_non_activity_message.content || '',
-                                    }}
-                                  />
-                                  <div className="flex items-center justify-between mt-2">
-                                    <span className="text-xs text-muted-foreground">
-                                      {new Date(
-                                        typeof item.conversation.last_non_activity_message
-                                          .created_at === 'number'
-                                          ? item.conversation.last_non_activity_message.created_at *
-                                            1000
-                                          : item.conversation.last_non_activity_message.created_at,
-                                      ).toLocaleString('pt-BR', {
-                                        day: '2-digit',
-                                        month: '2-digit',
-                                        hour: '2-digit',
-                                        minute: '2-digit',
-                                      })}
-                                    </span>
-                                    {item.conversation.last_non_activity_message?.message_type !==
-                                      undefined && (
-                                      <span className="text-xs text-muted-foreground">
-                                        {item.conversation.last_non_activity_message
-                                          .message_type === 0
-                                          ? t('kanban.conversation.incoming', 'Incoming')
-                                          : item.conversation.last_non_activity_message
-                                              .message_type === 1
-                                          ? t('kanban.conversation.outgoing', 'Outgoing')
-                                          : ''}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Inbox and Status Row */}
-                          <div className="flex items-center justify-between mb-3">
-                            {!item.is_lead && (
-                              <div className="flex items-center space-x-2 text-xs">
-                                <div className="flex items-center space-x-1 px-2 py-1 bg-muted/50 rounded-md">
-                                  <div className="w-3 h-3 text-muted-foreground">
-                                    <svg fill="currentColor" viewBox="0 0 20 20">
-                                      <path
-                                        fillRule="evenodd"
-                                        d="M2 5a2 2 0 012-2h8a2 2 0 012 2v10a2 2 0 002 2H4a2 2 0 01-2-2V5zm3 1h6v4H5V6zm6 6H5v2h6v-2z"
-                                        clipRule="evenodd"
-                                      />
-                                    </svg>
-                                  </div>
-                                  <span className="text-foreground font-medium truncate max-w-16">
-                                    {item.conversation?.inbox?.name ||
-                                      t('kanban.conversation.noInbox')}
-                                  </span>
-                                </div>
-                              </div>
-                            )}
-                            {!item.is_lead && (
-                              <div className="flex items-center space-x-2">
-                                {/* Status badge */}
-                                <span
-                                  className={`text-xs px-2 py-1 rounded-full font-medium ${
-                                    item.conversation?.status === 'open'
-                                      ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-                                      : item.conversation?.status === 'resolved'
-                                      ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
-                                      : 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
-                                  }`}
-                                >
-                                  {item.conversation?.status === 'open'
-                                    ? t('kanban.conversation.status.open')
-                                    : item.conversation?.status === 'resolved'
-                                    ? t('kanban.conversation.status.resolved')
-                                    : item.conversation?.status ||
-                                      t('kanban.conversation.status.unknown')}
-                                </span>
-                              </div>
+                            <h4 className="text-sm font-semibold text-foreground truncate flex-1 min-w-0">
+                              {item.contact?.name || t('kanban.conversation.unknownUser')}
+                            </h4>
+                            {!item.is_lead && item.conversation?.status && (
+                              <span
+                                className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ${
+                                  item.conversation.status === 'open'
+                                    ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                                    : item.conversation.status === 'resolved'
+                                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+                                    : 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
+                                }`}
+                              >
+                                {item.conversation.status === 'open'
+                                  ? 'Aberto'
+                                  : item.conversation.status === 'resolved'
+                                  ? 'Resolvido'
+                                  : item.conversation.status}
+                              </span>
                             )}
                           </div>
 
-                          {/* Services Total Value */}
-                          {item.services_info?.has_services &&
-                            item.services_info.total_value > 0 && (
-                              <div className="mb-3 pt-2 border-t border-border">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center space-x-1 text-xs text-muted-foreground">
-                                    <div className="w-3 h-3">
-                                      <svg fill="currentColor" viewBox="0 0 20 20">
-                                        <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z" />
-                                        <path
-                                          fillRule="evenodd"
-                                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.51-1.31c-.562-.649-1.413-1.076-2.353-1.253V5z"
-                                          clipRule="evenodd"
-                                        />
-                                      </svg>
-                                    </div>
-                                    <span className="font-medium">
-                                      {t('kanban.conversation.valueLabel')}
-                                    </span>
-                                  </div>
-                                  <div className="text-xs font-semibold text-green-600 dark:text-green-400">
-                                    {item.services_info.formatted_total}
-                                  </div>
+                          {/* Serviços com valores individuais + total */}
+                          {item.services_info?.has_services && (item.services_info.services?.length ?? 0) > 0 && (
+                            <div className="mb-2 p-2 rounded-md bg-muted/40 border border-border/60 text-xs space-y-0.5">
+                              {item.services_info.services?.map((svc, idx) => (
+                                <div key={`${svc.name}-${idx}`} className="flex items-center justify-between gap-2">
+                                  <span className="truncate text-foreground">{svc.name}</span>
+                                  <span className="text-muted-foreground whitespace-nowrap">
+                                    {item.services_info?.currency}{' '}
+                                    {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(svc.value)}
+                                  </span>
                                 </div>
+                              ))}
+                              <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/60 font-medium">
+                                <span className="text-foreground">Total</span>
+                                <span className="text-green-600 dark:text-green-400 whitespace-nowrap">
+                                  {item.services_info.currency} {item.services_info.formatted_total}
+                                </span>
                               </div>
-                            )}
-
-                          {/* Tasks Summary - Compact and Visual */}
-                          {(item.tasks_info?.pending_count > 0 ||
-                            item.tasks_info?.overdue_count > 0 ||
-                            item.tasks_info?.due_soon_count > 0 ||
-                            item.tasks_info?.completed_count > 0) && (
-                            <div className="mb-3 flex items-center gap-1.5 flex-wrap">
-                              <div className="text-sm">{t('tasks.title')}</div>
-                              {/* Tasks vencidas - Prioridade máxima */}
-                              {item.tasks_info?.overdue_count > 0 && (
-                                <Badge
-                                  title={t('tasks.status.overdue')}
-                                  variant="destructive"
-                                  className="h-5 px-1.5 text-xs"
-                                >
-                                  <AlertCircle className="w-3 h-3 mr-1" />
-                                  {item.tasks_info.overdue_count}
-                                </Badge>
-                              )}
-
-                              {/* Tasks próximas do vencimento */}
-                              {item.tasks_info?.due_soon_count > 0 && (
-                                <Badge
-                                  title={t('tasks.status.dueSoon')}
-                                  className="h-5 px-1.5 text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
-                                >
-                                  <Clock className="w-3 h-3 mr-1" />
-                                  {item.tasks_info.due_soon_count}
-                                </Badge>
-                              )}
-
-                              {/* Tasks pendentes (sem urgência) */}
-                              {item.tasks_info?.pending_count > 0 &&
-                                !item.tasks_info?.overdue_count &&
-                                !item.tasks_info?.due_soon_count && (
-                                  <Badge
-                                    title={t('tasks.status.pending')}
-                                    variant="secondary"
-                                    className="h-5 px-1.5 text-xs"
-                                  >
-                                    <ListTodo className="w-3 h-3 mr-1" />
-                                    {item.tasks_info.pending_count}
-                                  </Badge>
-                                )}
-
-                              {/* Tasks concluídas */}
-                              {item.tasks_info?.completed_count > 0 && (
-                                <Badge
-                                  title={t('tasks.status.completed')}
-                                  className="h-5 px-1.5 text-xs bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
-                                >
-                                  <CheckCircle2 className="w-3 h-3 mr-1" />
-                                  {item.tasks_info.completed_count}
-                                </Badge>
-                              )}
                             </div>
                           )}
 
                           {/* Time and assignee info */}
                           <div className="flex items-center justify-between text-xs">
-                            <div className="flex items-center space-x-1 text-muted-foreground">
-                              <div className="w-3 h-3">
-                                <svg fill="currentColor" viewBox="0 0 20 20">
-                                  <path
-                                    fillRule="evenodd"
-                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
-                                    clipRule="evenodd"
-                                  />
-                                </svg>
-                              </div>
-                              <span>
-                                {item.conversation?.last_activity_at
-                                  ? new Date(
-                                      item.conversation.last_activity_at * 1000,
-                                    ).toLocaleDateString('pt-BR')
-                                  : new Date((item.entered_at || 0) * 1000).toLocaleDateString(
-                                      'pt-BR',
-                                    )}
-                              </span>
-                            </div>
-
-                            {/* Assignee */}
+                            <span className="text-muted-foreground">
+                              {item.conversation?.last_activity_at
+                                ? new Date(item.conversation.last_activity_at * 1000).toLocaleDateString('pt-BR')
+                                : new Date((item.entered_at || 0) * 1000).toLocaleDateString('pt-BR')}
+                            </span>
                             {item.conversation?.assignee && (
-                              <div className="flex items-center space-x-1 text-muted-foreground">
-                                <User className="w-3 h-3" />
-                                <span className="truncate max-w-20">
+                              <div className="flex items-center gap-1.5 text-muted-foreground">
+                                {(item.conversation.assignee as any).avatar_url ? (
+                                  <img
+                                    src={(item.conversation.assignee as any).avatar_url}
+                                    alt={item.conversation.assignee.name || ''}
+                                    className="w-5 h-5 rounded-full object-cover"
+                                  />
+                                ) : (
+                                  <User className="w-3 h-3" />
+                                )}
+                                <span className="truncate max-w-24">
                                   {item.conversation.assignee.name}
                                 </span>
                               </div>

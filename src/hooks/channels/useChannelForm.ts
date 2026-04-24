@@ -260,6 +260,7 @@ export const useChannelForm = () => {
     // Config helpers
     hasEvolutionConfig: config.hasEvolutionConfig === true,
     hasEvolutionGoConfig: config.hasEvolutionGoConfig === true,
+    hasUazapiConfig: config.hasUazapiConfig === true,
     canFB: isValidString(config.fbAppId) && isValidString(config.fbApiVersion),
     canWpCloud: isValidString(config.wpAppId) && isValidString(config.wpWhatsappConfigId),
     config,

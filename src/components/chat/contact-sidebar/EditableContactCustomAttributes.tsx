@@ -1,5 +1,5 @@
 import CustomAttributesForm from '@/components/customAttributes/CustomAttributesForm';
-import { contactsService } from '@/services/contacts/contactsService';
+import { useContactUpdate } from '@/hooks/contacts/useContactUpdate';
 import { Contact } from '@/types/chat/api';
 
 interface EditableContactCustomAttributesProps {
@@ -15,13 +15,13 @@ export default function EditableContactCustomAttributes({
   contact,
   onContactUpdate,
 }: EditableContactCustomAttributesProps) {
+  const { updateContact } = useContactUpdate();
   const handleUpdateAttributes = async (updatedAttributes: Record<string, unknown>) => {
     if (!contact) {
       throw new Error('Contact is required');
     }
-    await contactsService.updateContact(contact.id, {
-      custom_attributes: updatedAttributes,
-    });
+    // silent: CustomAttributesForm surfaces its own success toast.
+    await updateContact(contact.id, { custom_attributes: updatedAttributes }, { silent: true });
   };
 
   return (

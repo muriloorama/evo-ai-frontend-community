@@ -32,7 +32,7 @@ export const ReplyModeToggle = ({
           onClick={() => onModeChange(ReplyMode.REPLY)}
           disabled={disabled || (forcedMode && forcedMode !== ReplyMode.REPLY)}
           className={`
-            h-7 px-3 text-xs font-medium transition-all duration-200 flex items-center gap-1.5
+            h-9 md:h-7 px-3 text-xs font-medium transition-all duration-200 flex items-center gap-1.5
             ${
               isReplyMode
                 ? 'bg-primary text-primary-foreground shadow-sm'
@@ -52,7 +52,7 @@ export const ReplyModeToggle = ({
           onClick={() => onModeChange(ReplyMode.NOTE)}
           disabled={disabled || (forcedMode && forcedMode !== ReplyMode.NOTE)}
           className={`
-            h-7 px-3 text-xs font-medium transition-all duration-200 flex items-center gap-1.5
+            h-9 md:h-7 px-3 text-xs font-medium transition-all duration-200 flex items-center gap-1.5
             ${
               isNoteMode
                 ? 'bg-primary text-primary-foreground shadow-sm'

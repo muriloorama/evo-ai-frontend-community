@@ -257,48 +257,29 @@ export function conversationsReducer(
     case 'UPDATE_CONTACT_IN_CONVERSATIONS': {
       const updatedContact = action.payload;
 
-      // Atualiza meta.sender em todas as conversas que usam esse contato
+      // Single source of truth: conversation.contact. The WebSocket hydrates
+      // it from the sender payload; UI components (sidebar, header, labels)
+      // read from it. meta.sender stays frozen with whatever arrived on the
+      // wire — nothing reads it for live UI state.
       const updatedConversations = state.conversations
       .filter(conv => conv !== null && conv !== undefined && conv.id)
       .map(conv => {
-        const sender = conv.meta?.sender;
-        if (!sender || String(sender.id) !== String(updatedContact.id)) {
+        const convContact = conv.contact;
+        if (!convContact || String(convContact.id) !== String(updatedContact.id)) {
           return conv;
         }
-
         return {
           ...conv,
-          meta: {
-            ...conv.meta,
-            sender: {
-              ...sender,
-              name: updatedContact.name,
-              email: updatedContact.email || sender.email,
-              phone_number: updatedContact.phone_number || sender.phone_number,
-              avatar_url: updatedContact.avatar_url || sender.avatar_url,
-            },
-          },
+          contact: { ...convContact, ...updatedContact },
         };
       });
 
-      // Atualizar dados da conversa selecionada, se for o mesmo contato
       let updatedSelectedConversationData = state.selectedConversationData;
-      if(
-        state.selectedConversationData?.meta?.sender &&
-        String(state.selectedConversationData?.meta?.sender.id) === String(updatedContact.id)
-      ) {
+      const selected = state.selectedConversationData;
+      if (selected?.contact && String(selected.contact.id) === String(updatedContact.id)) {
         updatedSelectedConversationData = {
-          ...state.selectedConversationData,
-          meta: {
-            ...state.selectedConversationData.meta,
-            sender: {
-              ...state.selectedConversationData.meta.sender,
-              name: updatedContact.name,
-              email: updatedContact.email || state.selectedConversationData.meta.sender.email,
-              phone_number: updatedContact.phone_number || state.selectedConversationData.meta.sender.phone_number,
-              avatar_url: updatedContact.avatar_url || state.selectedConversationData.meta.sender.avatar_url,
-            },
-          },
+          ...selected,
+          contact: { ...selected.contact, ...updatedContact },
         };
       }
 

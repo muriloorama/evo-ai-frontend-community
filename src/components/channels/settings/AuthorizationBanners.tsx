@@ -373,7 +373,17 @@ const AuthorizationSuccessBanner: React.FC<{
     setIsReconnecting(true);
     try {
       if (!config.wpAppId || !config.wpWhatsappConfigId) {
-        toast.error(t('settings.authorizationBanners.success.whatsappNotConfigured'));
+        toast.error(t('settings.authorizationBanners.success.whatsappNotConfigured'), {
+          description: t('settings.authorizationBanners.success.whatsappNotConfiguredDescription'),
+          action: {
+            label: t('settings.authorizationBanners.success.configureAction'),
+            onClick: () => {
+              window.location.href = '/settings/admin/channels';
+            },
+          },
+          duration: 10000,
+        });
+        setIsReconnecting(false);
         return;
       }
 
@@ -523,9 +533,15 @@ const AuthorizationSuccessBanner: React.FC<{
   };
 
   // Mostrar botão de reconectar apenas para providers específicos
-  // Para WhatsApp, apenas mostrar se for WhatsApp Cloud (provider === 'whatsapp' e inbox.provider === 'whatsapp_cloud')
+  // Para WhatsApp Cloud, só faz sentido quando há Embedded Signup configurado
+  // (wpAppId + wpWhatsappConfigId). Sem isso, o inbox foi criado manualmente
+  // e a reconexão é feita pelo card "Credenciais do WhatsApp Cloud" na aba Configuração.
   const providerLower = provider.toLowerCase();
-  const isWhatsAppCloud = providerLower === 'whatsapp' && inbox?.provider === 'whatsapp_cloud';
+  const hasEmbeddedSignupConfig = Boolean(config.wpAppId && config.wpWhatsappConfigId);
+  const isWhatsAppCloud =
+    providerLower === 'whatsapp' &&
+    inbox?.provider === 'whatsapp_cloud' &&
+    hasEmbeddedSignupConfig;
   const showReconnectButton =
     ['facebook', 'instagram', 'gmail', 'google', 'microsoft', 'outlook'].includes(providerLower) ||
     isWhatsAppCloud;

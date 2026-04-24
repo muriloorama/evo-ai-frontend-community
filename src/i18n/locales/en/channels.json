@@ -8,6 +8,7 @@
   "card": {
     "channelId": "Channel ID",
     "type": "Type",
+    "phoneNumber": "Phone",
     "displayName": "Display Name"
   },
   "table": {
@@ -263,6 +264,8 @@
         "facebookNotConfigured": "Facebook is not configured",
         "instagramNotConfigured": "Instagram is not configured",
         "whatsappNotConfigured": "WhatsApp is not configured",
+        "whatsappNotConfiguredDescription": "Set the WhatsApp Cloud App ID and Config ID in the admin settings.",
+        "configureAction": "Configure",
         "sdkNotLoaded": "Facebook SDK failed to load",
         "loginCancelled": "Login cancelled",
         "pageNotFound": "Page not found",
@@ -630,6 +633,8 @@
         "templateType": "Template Type",
         "templateTypes": {
           "text": "Text",
+          "interactive": "Interactive",
+          "media": "Media",
           "image": "Image",
           "video": "Video",
           "document": "Document",
@@ -645,6 +650,7 @@
         },
         "headerFormat": "Header Format",
         "headerFormats": {
+          "none": "No header",
           "text": "Text",
           "image": "Image",
           "video": "Video",
@@ -652,13 +658,20 @@
         },
         "headerText": "Header Text",
         "headerTextPlaceholder": "Enter header text",
+        "headerMediaUrl": "Sample media URL",
+        "headerMediaUrlHelp": "Meta requires a sample media URL to approve the template.",
         "bodyText": "Body Text",
         "bodyTextPlaceholder": "Enter message body text",
-        "footerText": "Footer Text",
+        "footerText": "Footer Text (optional)",
         "footerTextPlaceholder": "Enter footer text (optional)",
         "variablesHelp": "Use {{variable}} syntax for dynamic values",
+        "variableExamples": "Variable examples",
+        "variableExamplesHelp": "Meta requires a sample value for every {{variable}} in the body.",
+        "variableExamplePlaceholder": "e.g. John, $49.90, etc.",
         "buttons": "Buttons",
         "addButton": "Add Button",
+        "buttonsLimitReached": "3-button limit reached.",
+        "buttonsNoEmoji": "Emojis are not allowed in buttons.",
         "buttonTypes": {
           "quickReply": "Quick Reply",
           "url": "URL",
@@ -744,7 +757,10 @@
         "createError": "Error creating template",
         "updateError": "Error updating template",
         "deleteError": "Error deleting template",
-        "requiredFields": "Please fill in all required fields"
+        "requiredFields": "Please fill in all required fields",
+        "headerMediaUrlRequired": "Provide a sample URL for the media header.",
+        "variableExamplesRequired": "Provide a sample value for every body variable.",
+        "buttonsInvalid": "Check your buttons — text cannot be empty and must be 20 characters or fewer."
       },
       "success": {
         "syncSuccess": "Templates synced successfully!",
@@ -824,6 +840,35 @@
         }
       },
       "whatsapp": {
+        "cloudCredentials": {
+          "title": "WhatsApp Cloud Credentials",
+          "description": "Update the Phone Number ID, WABA ID, and Access Token without losing the inbox.",
+          "editButton": "Edit",
+          "saveButton": "Save",
+          "cancelButton": "Cancel",
+          "fields": {
+            "phoneNumber": "Phone number",
+            "phoneNumberId": "Phone Number ID",
+            "wabaId": "Business Account ID (WABA ID)",
+            "apiKey": "Access Token (API Key)"
+          },
+          "success": {
+            "saved": "Credentials updated successfully!"
+          },
+          "errors": {
+            "missingFields": "Fill in Phone Number ID, WABA ID, and Access Token.",
+            "saveError": "Error saving credentials. Check the values and try again."
+          },
+          "webhook": {
+            "title": "Webhook on Meta",
+            "description": "Copy these values and paste into Meta for Developers → your App → WhatsApp → Configuration → Webhooks.",
+            "callbackUrl": "Callback URL",
+            "verifyToken": "Verify Token",
+            "urlUnavailable": "URL unavailable — save the channel first",
+            "regenerate": "Generate new token",
+            "regenerated": "New Verify Token generated"
+          }
+        },
         "instance": {
           "statusTitle": "Instance Status",
           "statusConnected": "Connected",

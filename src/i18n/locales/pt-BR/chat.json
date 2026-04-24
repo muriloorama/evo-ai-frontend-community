@@ -15,12 +15,15 @@
       "contextMenu": {
         "reply": "Responder",
         "copy": "Copiar mensagem",
-        "delete": "Excluir mensagem"
+        "delete": "Excluir mensagem",
+        "react": "Reagir",
+        "reactionFailed": "Falha ao enviar reação."
       },
       "userFallback": "Usuário",
       "agent": {
         "badge": "Atendente",
-        "fallback": "Atendente"
+        "fallback": "Atendente",
+        "fromPhone": "Celular"
       },
       "bot": {
         "badge": "🤖 Bot",
@@ -800,6 +803,10 @@
     "assignAgent": "Atribuir atendente",
     "assignTeam": "Atribuir time",
     "assignTag": "Atribuir etiqueta",
+    "lockGroup": "Trancar grupo",
+    "unlockGroup": "Destrancar grupo",
+    "groupLocked": "Grupo trancado — novas mensagens serão ignoradas",
+    "groupUnlocked": "Grupo destrancado — voltando a receber mensagens",
     "deleteConversation": "Excluir conversa"
   },
   "conversationBadges": {

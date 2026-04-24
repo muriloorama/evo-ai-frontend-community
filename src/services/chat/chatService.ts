@@ -142,6 +142,11 @@ class ChatService {
     return response.data;
   }
 
+  async toggleGroupLock(conversationId: string): Promise<{ data: { group_locked: boolean } }> {
+    const response = await api.post(`/conversations/${conversationId}/toggle_group_lock`);
+    return response.data;
+  }
+
   async updateConversationCustomAttributes(
     conversationId: string,
     customAttributes: Record<string, unknown>,

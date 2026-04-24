@@ -1,6 +1,17 @@
 import api from '@/services/core/api';
 import type { ChannelConfiguration, EvolutionSettings } from '@/types/channels/inbox';
 
+// Maps the channel provider to the matching settings endpoint. uazapi has its
+// own controller (Api::V1::Uazapi::SettingsController) backed by the channel's
+// provider_config. evolution / evolution_go keep the legacy endpoints.
+const settingsEndpointFor = (provider: string, instanceName: string): string => {
+  switch (provider) {
+    case 'uazapi':       return `/uazapi/settings/${instanceName}`;
+    case 'evolution_go': return `/evolution_go/settings/${instanceName}`;
+    default:             return `/evolution/settings/${instanceName}`;
+  }
+};
+
 const ChannelConfigurationService = {
   /**
    * Update channel configuration
@@ -103,11 +114,14 @@ export const EvolutionApiService = {
    */
   async getQRCode(instanceName: string, provider: string = 'evolution'): Promise<any> {
     try {
-      // Use different endpoint for Evolution Go
-      const endpoint =
-        provider === 'evolution_go'
-          ? `/evolution_go/qrcodes/${instanceName}`
-          : `/evolution/qrcodes/${instanceName}`;
+      let endpoint: string;
+      if (provider === 'evolution_go') {
+        endpoint = `/evolution_go/qrcodes/${instanceName}`;
+      } else if (provider === 'uazapi') {
+        endpoint = `/uazapi/qrcodes/${instanceName}`;
+      } else {
+        endpoint = `/evolution/qrcodes/${instanceName}`;
+      }
 
       const { data } = await api.get(endpoint);
       return data;
@@ -139,25 +153,20 @@ export const EvolutionApiService = {
   },
 
   /**
-   * Get Evolution instance settings
+   * Get instance settings — resolves the right endpoint per provider.
    */
   async getSettings(instanceName: string, provider: string = 'evolution'): Promise<any> {
     try {
-      const endpoint =
-        provider === 'evolution_go'
-          ? `/evolution_go/settings/${instanceName}`
-          : `/evolution/settings/${instanceName}`;
-
-      const { data } = await api.get(endpoint);
+      const { data } = await api.get(settingsEndpointFor(provider, instanceName));
       return data;
     } catch (error) {
-      console.error('EvolutionApiService.getSettings error:', error);
+      console.error('ChannelConfigurationService.getSettings error:', error);
       throw error;
     }
   },
 
   /**
-   * Update Evolution instance settings
+   * Update instance settings — same provider routing as getSettings.
    */
   async updateSettings(
     instanceName: string,
@@ -165,17 +174,10 @@ export const EvolutionApiService = {
     provider: string = 'evolution',
   ): Promise<any> {
     try {
-      const endpoint =
-        provider === 'evolution_go'
-          ? `/evolution_go/settings/${instanceName}`
-          : `/evolution/settings/${instanceName}`;
-
-      const { data } = await api.put(endpoint, {
-        settings,
-      });
+      const { data } = await api.put(settingsEndpointFor(provider, instanceName), { settings });
       return data;
     } catch (error) {
-      console.error('EvolutionApiService.updateSettings error:', error);
+      console.error('ChannelConfigurationService.updateSettings error:', error);
       throw error;
     }
   },
@@ -224,6 +226,9 @@ export const EvolutionApiService = {
         if (instanceName) {
           endpoint += `?instanceName=${instanceName}`;
         }
+      } else if (provider === 'uazapi') {
+        const params = instanceName ? `?instanceName=${instanceName}` : '';
+        endpoint = `/uazapi/instances${params}`;
       } else {
         // Evolution uses /instances endpoint
         const params = instanceName ? `?instanceName=${instanceName}` : '';

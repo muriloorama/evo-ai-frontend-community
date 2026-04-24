@@ -11,15 +11,26 @@ interface ReplyPreviewProps {
 const ReplyPreview: React.FC<ReplyPreviewProps> = ({ message, isOwn }) => {
   const { t } = useLanguage('chat');
 
+  // Strip HTML tags + decode a few common entities so raw markup from the
+  // rich text editor (e.g. "<p>top</p>") doesn't leak into the preview.
+  const stripHtml = (raw: string): string =>
+    raw
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/\s+/g, ' ')
+      .trim();
+
   // Determinar conteúdo a exibir
   const getPreviewContent = () => {
     if (message.content) {
-      // Truncar conteúdo se muito longo
+      const plain = stripHtml(message.content);
       const maxLength = 100;
-      const content = message.content.length > maxLength
-        ? `${message.content.substring(0, maxLength)}...`
-        : message.content;
-      return content;
+      return plain.length > maxLength ? `${plain.substring(0, maxLength)}...` : plain;
     }
 
     if (message.attachments && message.attachments.length > 0) {

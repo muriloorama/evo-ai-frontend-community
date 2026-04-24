@@ -94,9 +94,9 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({
   }
 
   return (
-    <div className={`bg-background border rounded-lg p-3 ${className}`}>
-      {/* Tudo em uma linha compacta */}
-      <div className="flex items-center justify-between gap-3">
+    <div className={`bg-background border rounded-lg p-2 md:p-3 ${className}`}>
+      {/* Tudo em uma linha compacta — botões maiores no mobile */}
+      <div className="flex items-center justify-between gap-2 md:gap-3">
         {/* Controles à esquerda */}
         <div className="flex items-center gap-2">
           {!isRecording && !hasRecording && (
@@ -104,36 +104,55 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({
               size="sm"
               onClick={startRecording}
               disabled={disabled}
-              className="bg-green-500 hover:bg-green-600 text-white"
+              className="bg-green-500 hover:bg-green-600 text-white h-10 md:h-9 px-3"
             >
-              <Mic className="h-4 w-4 mr-1" />
-              {t('audioRecorder.record')}
+              <Mic className="h-5 w-5 md:h-4 md:w-4 mr-1" />
+              <span>{t('audioRecorder.record')}</span>
             </Button>
           )}
 
           {isRecording && (
             <>
               <Button
-                size="sm"
+                size="icon"
                 variant="outline"
                 onClick={isPaused ? resumeRecording : pauseRecording}
                 disabled={disabled}
+                className="h-11 w-11 md:h-9 md:w-9"
               >
-                {isPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+                {isPaused ? <Play className="h-5 w-5 md:h-4 md:w-4" /> : <Pause className="h-5 w-5 md:h-4 md:w-4" />}
               </Button>
-              <Button size="sm" variant="destructive" onClick={stopRecording} disabled={disabled}>
-                <Square className="h-4 w-4" />
+              <Button
+                size="icon"
+                variant="destructive"
+                onClick={stopRecording}
+                disabled={disabled}
+                className="h-11 w-11 md:h-9 md:w-9"
+              >
+                <Square className="h-5 w-5 md:h-4 md:w-4" />
               </Button>
             </>
           )}
 
           {hasRecording && (
             <>
-              <Button size="sm" variant="outline" onClick={togglePlayback} disabled={disabled}>
-                {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+              <Button
+                size="icon"
+                variant="outline"
+                onClick={togglePlayback}
+                disabled={disabled}
+                className="h-11 w-11 md:h-9 md:w-9"
+              >
+                {isPlaying ? <Pause className="h-5 w-5 md:h-4 md:w-4" /> : <Play className="h-5 w-5 md:h-4 md:w-4" />}
               </Button>
-              <Button size="sm" variant="outline" onClick={handleCancel} disabled={disabled}>
-                <Trash2 className="h-4 w-4" />
+              <Button
+                size="icon"
+                variant="outline"
+                onClick={handleCancel}
+                disabled={disabled}
+                className="h-11 w-11 md:h-9 md:w-9"
+              >
+                <Trash2 className="h-5 w-5 md:h-4 md:w-4" />
               </Button>
             </>
           )}
@@ -147,7 +166,7 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({
           {isRecording && isPaused && <div className="w-2 h-2 bg-yellow-500 rounded-full" />}
           <span className="text-lg font-mono font-medium">{formatDuration(duration)}</span>
           {isPaused && (
-            <span className="text-sm text-muted-foreground">
+            <span className="hidden md:inline text-sm text-muted-foreground">
               {t('audioRecorder.paused')}
             </span>
           )}
@@ -159,12 +178,12 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({
             size="sm"
             onClick={handleComplete}
             disabled={disabled}
-            className="bg-green-500 hover:bg-green-600 text-white"
+            className="bg-green-500 hover:bg-green-600 text-white h-10 md:h-9 px-3"
           >
             {t('audioRecorder.send')}
           </Button>
         ) : (
-          <div className="w-16" /> // Placeholder para manter alinhamento
+          <div className="w-11 md:w-16" /> // Placeholder para manter alinhamento
         )}
       </div>
 

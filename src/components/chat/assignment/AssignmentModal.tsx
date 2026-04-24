@@ -121,7 +121,7 @@ const AssignmentModal: React.FC<AssignmentModalProps> = ({
     return (
       <div
         key={option.id}
-        className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all hover:bg-accent ${isSelected ? 'bg-accent border-primary' : 'border-border'
+        className={`flex items-center gap-3 p-3 min-h-[52px] rounded-lg border cursor-pointer transition-all hover:bg-accent active:bg-accent/70 ${isSelected ? 'bg-accent border-primary' : 'border-border'
           }`}
         onClick={() => handleToggleSelection(option.id)}
       >
@@ -159,16 +159,16 @@ const AssignmentModal: React.FC<AssignmentModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md w-[calc(100%-1rem)] sm:w-[calc(100%-2rem)] max-h-[95vh] sm:max-h-[90vh] p-4 sm:p-6 flex flex-col">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 pr-8">
             {getIcon()}
             {title}
           </DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-4 flex-1 min-h-0 flex flex-col">
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -177,7 +177,7 @@ const AssignmentModal: React.FC<AssignmentModalProps> = ({
               placeholder={defaultSearchPlaceholder}
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="pl-10"
+              className="pl-10 h-11 md:h-9"
             />
           </div>
 
@@ -208,7 +208,7 @@ const AssignmentModal: React.FC<AssignmentModalProps> = ({
           )}
 
           {/* Options List */}
-          <div className="max-h-64 overflow-y-auto space-y-2">
+          <div className="flex-1 min-h-0 max-h-64 sm:max-h-72 overflow-y-auto space-y-2 -mx-1 px-1">
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
                 <div className="text-sm text-muted-foreground">
@@ -229,14 +229,14 @@ const AssignmentModal: React.FC<AssignmentModalProps> = ({
           </div>
         </div>
 
-        <DialogFooter className="flex-col-reverse sm:flex-row gap-3">
-          <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
+        <DialogFooter className="flex-col-reverse sm:flex-row gap-2 sm:gap-3">
+          <Button variant="outline" onClick={onClose} disabled={isSubmitting} className="h-11 md:h-9 w-full sm:w-auto">
             {t('assignmentModal.cancel')}
           </Button>
           <Button
             onClick={handleConfirm}
             disabled={isSubmitting || !hasSelectionChanged}
-            className="w-full sm:w-auto"
+            className="h-11 md:h-9 w-full sm:w-auto"
           >
             {isSubmitting
               ? t('assignmentModal.applying')

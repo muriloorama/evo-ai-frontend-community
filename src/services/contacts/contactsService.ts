@@ -19,6 +19,39 @@ import type {
   ContactableInboxes,
 } from '@/types/contacts';
 
+// Serialises a contact payload (minus any File fields) into FormData using
+// Rails-style brackets for nested objects/arrays. Shared between
+// createContact and updateContact so multipart uploads stay consistent.
+function buildContactFormData(data: Record<string, unknown>): FormData {
+  const formData = new FormData();
+
+  const appendValue = (path: string, value: unknown): void => {
+    if (value === undefined || value === null) return;
+
+    if (value instanceof Blob) {
+      formData.append(path, value);
+      return;
+    }
+
+    if (Array.isArray(value)) {
+      value.forEach(item => appendValue(`${path}[]`, item));
+      return;
+    }
+
+    if (typeof value === 'object') {
+      Object.entries(value as Record<string, unknown>).forEach(([key, nested]) => {
+        appendValue(`${path}[${key}]`, nested);
+      });
+      return;
+    }
+
+    formData.append(path, String(value));
+  };
+
+  Object.entries(data).forEach(([key, value]) => appendValue(key, value));
+  return formData;
+}
+
 class ContactsService {
   // List contacts with pagination and filters
   async getContacts(params?: ContactsListParams): Promise<ContactsResponse> {
@@ -71,106 +104,40 @@ class ContactsService {
     return extractData<Contact>(response);
   }
 
-  // Create contact (with optional file upload)
+  // Create contact. Same shape as updateContact: multipart when an avatar
+  // file is attached, plain JSON otherwise.
   async createContact(contactData: ContactFormData): Promise<Contact> {
-    const { avatar, ...data } = contactData;
-
-    if (avatar) {
-      const formData = new FormData();
-
-      // Add basic fields
-      Object.entries(data).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          if (typeof value === 'object') {
-            // Handle custom_attributes and additional_attributes
-            Object.entries(value).forEach(([subKey, subValue]) => {
-              if (subValue !== undefined && subValue !== null) {
-                formData.append(`${key}[${subKey}]`, String(subValue));
-              }
-            });
-          } else if (Array.isArray(value)) {
-            // Handle labels array
-            value.forEach(item => formData.append(`${key}[]`, String(item)));
-          } else {
-            formData.append(key, String(value));
-          }
-        }
-      });
-
-      // Add avatar file
-      formData.append('avatar', avatar);
-
-      const response = await api.post(`/contacts`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      return extractData<Contact>(response);
-    } else {
-      const response = await api.post(`/contacts`, data);
+    if (!contactData.avatar) {
+      const response = await api.post(`/contacts`, contactData);
       return extractData<Contact>(response);
     }
+
+    const { avatar, ...data } = contactData;
+    const formData = buildContactFormData(data);
+    formData.append('avatar', avatar);
+
+    const response = await api.post(`/contacts`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return extractData<Contact>(response);
   }
 
-  // Update contact
+  // Update contact. When `avatar` is present the payload is sent as
+  // multipart/form-data (for the file); otherwise a plain JSON PATCH is
+  // sent. This is the only entry point — previous helpers for avatar-only
+  // updates were just thin wrappers around the same PATCH.
   async updateContact(contactId: string, contactData: ContactUpdateData): Promise<Contact> {
-    const { avatar, ...data } = contactData;
-
-    if (avatar) {
-      const formData = new FormData();
-
-      // Add basic fields
-      Object.entries(data).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          if (typeof value === 'object' && !Array.isArray(value)) {
-            // Handle nested objects like additional_attributes
-            Object.entries(value).forEach(([subKey, subValue]) => {
-              if (subValue !== undefined && subValue !== null) {
-                if (typeof subValue === 'object' && !Array.isArray(subValue)) {
-                  // Handle deeply nested objects like location
-                  Object.entries(subValue).forEach(([deepKey, deepValue]) => {
-                    if (deepValue !== undefined && deepValue !== null) {
-                      formData.append(`${key}[${subKey}][${deepKey}]`, String(deepValue));
-                    }
-                  });
-                } else {
-                  formData.append(`${key}[${subKey}]`, String(subValue));
-                }
-              }
-            });
-          } else if (Array.isArray(value)) {
-            // Handle arrays like labels
-            value.forEach(item => formData.append(`${key}[]`, String(item)));
-          } else {
-            formData.append(key, String(value));
-          }
-        }
-      });
-
-      // Add avatar file
-      formData.append('avatar', avatar);
-
-      const response = await api.patch(`/contacts/${contactId}`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      return extractData<Contact>(response);
-    } else {
+    if (!contactData.avatar) {
       const response = await api.patch(`/contacts/${contactId}`, contactData);
       return extractData<Contact>(response);
     }
-  }
 
-  // Update contact with file upload
-  async updateContactWithAvatar(contactId: string, avatar: File): Promise<Contact> {
-    const formData = new FormData();
+    const { avatar, ...data } = contactData;
+    const formData = buildContactFormData(data);
     formData.append('avatar', avatar);
 
     const response = await api.patch(`/contacts/${contactId}`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+      headers: { 'Content-Type': 'multipart/form-data' },
     });
     return extractData<Contact>(response);
   }

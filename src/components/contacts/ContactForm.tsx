@@ -179,7 +179,7 @@ export default function ContactForm({
             github: contact.additional_attributes?.social_profiles?.github || '',
           },
         },
-        labels: contact.labels || [],
+        labels: (contact.labels || []).map(l => (typeof l === 'string' ? l : l.name)),
         custom_attributes: {},
         company_ids: contact.companies?.map(c => c.id) || [],
       });
@@ -195,7 +195,11 @@ export default function ContactForm({
       setCustomAttributes({});
       setAvatarPreview(null);
     }
-  }, [contact, isNew]);
+    // Intentionally depend on contact.id (not the whole object) so realtime
+    // updates that replace the contact reference don't wipe unsaved edits
+    // (e.g. toggling "blocked" would get reverted mid-edit otherwise).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contact?.id, isNew]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => {
@@ -869,19 +873,19 @@ export default function ContactForm({
       </div>
 
       {/* Actions */}
-      <div className="flex gap-3 pt-4">
+      <div className="flex gap-2 sm:gap-3 pt-4 sticky bottom-0 bg-background pb-2">
         {onCancel && (
           <Button
             type="button"
             variant="outline"
             onClick={onCancel}
             disabled={loading}
-            className="flex-1"
+            className="flex-1 h-11 md:h-9"
           >
             {t('form.actions.cancel')}
           </Button>
         )}
-        <Button type="submit" disabled={loading} className="bg-primary hover:bg-primary/85 text-primary-foreground border-0 font-semibold flex-1">
+        <Button type="submit" disabled={loading} className="h-11 md:h-9 bg-primary hover:bg-primary/85 text-primary-foreground border-0 font-semibold flex-1">
           {loading
             ? t('form.actions.saving')
             : isNew

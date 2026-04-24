@@ -15,8 +15,15 @@ const MessageImage: React.FC<MessageImageProps> = ({ attachments }) => {
   const [selectedImage, setSelectedImage] = useState<Attachment | null>(null);
   const [imageZoom, setImageZoom] = useState(1);
 
+  // Miniatura no chat: prefere thumbnail (mais leve e rápido).
   const resolveImageSrc = (attachment: Attachment): string | null => {
     const src = attachment.thumb_url || attachment.data_url;
+    return src && src.trim() !== '' ? src : null;
+  };
+
+  // Modal ampliado: usa a imagem original (data_url), caindo pra thumb só em fallback.
+  const resolveFullImageSrc = (attachment: Attachment): string | null => {
+    const src = attachment.data_url || attachment.thumb_url;
     return src && src.trim() !== '' ? src : null;
   };
 
@@ -237,9 +244,9 @@ const MessageImage: React.FC<MessageImageProps> = ({ attachments }) => {
 
           {/* Container da imagem */}
           <div className="flex-1 flex items-center justify-center p-4 overflow-auto">
-            {resolveImageSrc(selectedImage) && (
+            {resolveFullImageSrc(selectedImage) && (
               <img
-                src={resolveImageSrc(selectedImage) || undefined}
+                src={resolveFullImageSrc(selectedImage) || undefined}
                 alt={selectedImage.fallback_title || t('messages.messageImage.imageZoomedAlt')}
                 className="max-w-full max-h-full object-contain transition-transform duration-200"
                 style={{

@@ -5,6 +5,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 
 import { useChatContext } from '@/contexts/chat/ChatContext';
 import { usePermissions } from '@/contexts/PermissionsContext';
+import { useAccountPath } from '@/hooks/useAccountPath';
 
 import { useDebounce } from '../../../hooks/useDebounce';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -60,11 +61,17 @@ interface SendMessageOptions {
 const UUID_V4_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+// Chatwoot-style display_id in the URL: /conversations/42. Frontend builds
+// links with display_id so URLs stay readable; the backend resolves both
+// display_id and UUID transparently via Conversations#resolve_conversation.
+const DISPLAY_ID_REGEX = /^\d+$/;
+
 const Chat = () => {
   const { t } = useLanguage('chat');
   const { can, isReady: permissionsReady } = usePermissions();
   const { conversationId } = useParams<{ conversationId?: string }>();
   const navigate = useNavigate();
+  const buildAccountPath = useAccountPath();
   const chatContext = useChatContext();
   // Explicitly type conversations to ensure TypeScript recognizes it has 'state'
   const conversations = chatContext.conversations;
@@ -258,9 +265,13 @@ const Chat = () => {
           // 🔧 FIX: Normalizar conversationId da URL para string
           const conversationIdStr = String(conversationId);
 
-          // Aceitar apenas UUID canônico na URL.
-          if (!UUID_V4_REGEX.test(conversationIdStr)) {
-            navigate('/conversations', { replace: true });
+          // Accept UUID (legacy) or display_id (Chatwoot-style sequential).
+          // findConversationByAnyId below handles the lookup in both shapes.
+          const isValidUrlId =
+            UUID_V4_REGEX.test(conversationIdStr) ||
+            DISPLAY_ID_REGEX.test(conversationIdStr);
+          if (!isValidUrlId) {
+            navigate(buildAccountPath('/conversations'), { replace: true });
             return;
           }
 
@@ -519,7 +530,7 @@ const Chat = () => {
       setMobileView('list');
       setIsContactSidebarOpen(false);
       isManualNavigationRef.current = true;
-      navigate('/conversations', { replace: true });
+      navigate(buildAccountPath('/conversations'), { replace: true });
       setTimeout(() => {
         isManualNavigationRef.current = false;
       }, 100);
@@ -637,7 +648,14 @@ const Chat = () => {
   // 🎯 HANDLERS SIMPLIFICADOS: Usar handlers dos hooks customizados
   const handleConversationSelect = (conversation: Conversation) => {
     // 🔧 FIX CRÍTICO: Normalizar IDs para string SEMPRE
+    // Internal state still keys off the UUID — the selection layer, websocket
+    // channels and outbound API calls all expect UUID-shaped ids. Only the
+    // URL uses display_id (falls back to UUID if display_id isn't populated
+    // yet, e.g. for a conversation just created and not yet round-tripped).
     const conversationIdStr = String(conversation.uuid || conversation.id);
+    const urlIdStr = conversation.display_id
+      ? String(conversation.display_id)
+      : conversationIdStr;
     const currentSelectedStr = String(conversations.state.selectedConversationId);
 
     // 🔒 PROTEÇÃO: Evitar seleção dupla (comparação normalizada)
@@ -652,8 +670,8 @@ const Chat = () => {
     conversations.selectConversation(conversationIdStr);
     // Switch to chat view on mobile when conversation is selected
     setMobileView('chat');
-    // Atualizar URL para incluir o ID da conversa
-    navigate(`/conversations/${conversationIdStr}`, { replace: true });
+    // Atualizar URL para incluir o display_id da conversa (formato Chatwoot).
+    navigate(buildAccountPath(`/conversations/${urlIdStr}`), { replace: true });
 
     // 🔒 RESET flag após navegação
     setTimeout(() => {
@@ -669,7 +687,7 @@ const Chat = () => {
     setMobileView('list');
     setIsContactSidebarOpen(false); // Fechar sidebar se estiver aberto
     // Voltar para a lista geral de conversas
-    navigate('/conversations', { replace: true });
+    navigate(buildAccountPath('/conversations'), { replace: true });
 
     // 🔒 RESET flag após navegação
     setTimeout(() => {
@@ -680,7 +698,7 @@ const Chat = () => {
   return (
     <ErrorBoundary>
       <ChatTour />
-      <div className="h-full w-full flex flex-col md:flex-row overflow-hidden">
+      <div className="h-full w-full flex flex-col md:flex-row overflow-hidden overscroll-contain">
         {/* Chat List Sidebar */}
         <ChatSidebar
           mobileView={mobileView}
@@ -721,7 +739,7 @@ const Chat = () => {
                 conversation={selectedConversation}
                 onBackClick={() => setMobileView('list')}
                 onCloseConversation={handleCloseConversation}
-                onContactSidebarOpen={() => setIsContactSidebarOpen(true)}
+                onContactSidebarOpen={() => setIsContactSidebarOpen(prev => !prev)}
                 onMarkAsRead={handleMarkAsRead}
                 onMarkAsUnread={handleMarkAsUnread}
                 onMarkAsOpen={handleMarkAsOpen}

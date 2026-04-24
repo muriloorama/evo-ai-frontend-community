@@ -356,7 +356,7 @@ export default function CreatePipelineModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-5xl max-h-[85vh] overflow-hidden sm:max-w-5xl">
+      <DialogContent className="max-w-5xl w-[calc(100%-1rem)] sm:w-[calc(100%-2rem)] max-h-[95vh] sm:max-h-[85vh] p-4 sm:p-6 overflow-hidden sm:max-w-5xl flex flex-col">
         <form onSubmit={handleSubmit} className="flex flex-col h-full">
           <DialogHeader>
             <DialogTitle>{t('createPipeline.title')}</DialogTitle>

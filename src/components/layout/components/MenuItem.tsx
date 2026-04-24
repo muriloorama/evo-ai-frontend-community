@@ -7,6 +7,7 @@ import {
   TooltipTrigger,
 } from '@evoapi/design-system';
 import { MenuItem as MenuItemType } from '../config/menuItems';
+import { useAccountPath } from '@/hooks/useAccountPath';
 
 // Utility function for className merging
 function cn(...classes: (string | undefined | null | false)[]) {
@@ -30,10 +31,17 @@ export default function MenuItem({
   onClick,
 }: MenuItemProps) {
   const hasSubItems = item.subItems && item.subItems.length > 0;
+  const buildAccountPath = useAccountPath();
+
+  // menuItems.ts uses bare paths like '/conversations'; the sidebar should emit
+  // the Chatwoot-style `/app/accounts/:n/conversations` so we don't bounce
+  // through LegacyAccountRedirect on every click.
+  const isPlaceholder = item.href === '#';
+  const target = isPlaceholder ? '#' : buildAccountPath(item.href);
 
   const menuItem = (
     <Link
-      to={hasSubItems && !mobile && item.href === '#' ? '#' : item.href}
+      to={hasSubItems && !mobile && isPlaceholder ? '#' : target}
       onClick={onClick}
       className={cn(
         'flex items-center gap-3 px-3 py-2.5 rounded-md transition-all group',

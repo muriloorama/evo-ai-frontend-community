@@ -31,10 +31,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@evoapi/design-system';
-import { Plus, Trash2, ChevronsUpDown, Check } from 'lucide-react';
+import { Plus, Trash2, ChevronsUpDown, Check, Settings2 } from 'lucide-react';
 import { PipelineItem, PipelineStage, Pipeline, PipelineTask, CreateTaskData, UpdateTaskData, PipelineServiceDefinition } from '@/types/analytics';
 import pipelineServiceDefinitionsService from '@/services/pipelines/pipelineServiceDefinitionsService';
 import PipelineItemCustomAttributes from './PipelineItemCustomAttributes';
+import PipelineServiceCatalog from './PipelineServiceCatalog';
 import PipelineTasksList, { PipelineTasksListRef } from './tasks/PipelineTasksList';
 import CreateTaskModal from './tasks/CreateTaskModal';
 import EditTaskModal from './tasks/EditTaskModal';
@@ -79,6 +80,7 @@ export default function EditItemModal({
   const [activeTab, setActiveTab] = useState('details');
   const [catalogServices, setCatalogServices] = useState<PipelineServiceDefinition[]>([]);
   const [openServicePopover, setOpenServicePopover] = useState<number | null>(null);
+  const [showCatalogManager, setShowCatalogManager] = useState(false);
 
   // Task modals state
   const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
@@ -256,14 +258,30 @@ export default function EditItemModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-hidden">
+      <DialogContent className="sm:max-w-3xl w-[calc(100%-1rem)] sm:w-[calc(100%-2rem)] max-h-[95vh] sm:max-h-[90vh] p-4 sm:p-6 overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>{t('editItem.title')}</DialogTitle>
+          <DialogTitle className="pr-8">{t('editItem.title')}</DialogTitle>
           <DialogDescription>{t('editItem.description')}</DialogDescription>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-1 min-h-0 flex flex-col">
+          {/* Mobile: tabs scrolláveis em pills compactas; Desktop: grid 4 colunas */}
+          <div className="md:hidden -mx-1 overflow-x-auto scrollbar-hidden">
+            <TabsList className="inline-flex w-auto h-10">
+              <TabsTrigger value="details" className="text-sm whitespace-nowrap">{t('editItem.tabs.details')}</TabsTrigger>
+              <TabsTrigger value="services" className="text-sm whitespace-nowrap">{t('editItem.tabs.services')}</TabsTrigger>
+              <TabsTrigger value="attributes" className="text-sm whitespace-nowrap">{t('editItem.tabs.attributes')}</TabsTrigger>
+              <TabsTrigger value="tasks" className="text-sm whitespace-nowrap relative">
+                {t('editItem.tabs.tasks')}
+                {(pendingCount > 0 || overdueCount > 0) && (
+                  <span className="ml-1.5 px-1.5 py-0.5 text-xs font-medium rounded-full bg-primary text-primary-foreground">
+                    {pendingCount + overdueCount}
+                  </span>
+                )}
+              </TabsTrigger>
+            </TabsList>
+          </div>
+          <TabsList className="hidden md:grid w-full grid-cols-4">
             <TabsTrigger value="details">{t('editItem.tabs.details')}</TabsTrigger>
             <TabsTrigger value="services">{t('editItem.tabs.services')}</TabsTrigger>
             <TabsTrigger value="attributes">{t('editItem.tabs.attributes')}</TabsTrigger>
@@ -344,17 +362,30 @@ export default function EditItemModal({
 
           {/* Services Tab */}
           <TabsContent value="services" className="py-4 space-y-4 overflow-y-auto max-h-[60vh]">
-            <div className="flex items-center justify-between mb-4">
-              <div>
+            <div className="flex items-center justify-between mb-4 gap-2">
+              <div className="min-w-0">
                 <h3 className="text-lg font-semibold">{t('editItem.services')}</h3>
                 <p className="text-sm text-muted-foreground">
                   {t('editItem.servicesDescription') || 'Gerencie os serviços associados a este item'}
                 </p>
               </div>
-              <Button type="button" size="sm" onClick={addService} className="h-8">
-                <Plus className="w-4 h-4 mr-1" />
-                {t('editItem.addService')}
-              </Button>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowCatalogManager(true)}
+                  className="h-8"
+                  title="Editar/remover serviços do catálogo do pipeline"
+                >
+                  <Settings2 className="w-4 h-4 mr-1" />
+                  Gerenciar catálogo
+                </Button>
+                <Button type="button" size="sm" onClick={addService} className="h-8">
+                  <Plus className="w-4 h-4 mr-1" />
+                  {t('editItem.addService')}
+                </Button>
+              </div>
             </div>
 
             {services.length === 0 ? (
@@ -535,6 +566,28 @@ export default function EditItemModal({
             loading={taskLoading}
             availableUsers={users}
           />
+
+          {/* Catalog manager — permite editar/remover serviços do catálogo do pipeline */}
+          <Dialog
+            open={showCatalogManager}
+            onOpenChange={(open) => {
+              setShowCatalogManager(open);
+              // Ao fechar, recarrega o catálogo pra refletir alterações no dropdown
+              if (!open && item) {
+                pipelineServiceDefinitionsService
+                  .getServiceDefinitions(item.pipeline_id)
+                  .then(setCatalogServices)
+                  .catch(() => {});
+              }
+            }}
+          >
+            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Catálogo de serviços</DialogTitle>
+              </DialogHeader>
+              {item && <PipelineServiceCatalog pipelineId={item.pipeline_id} />}
+            </DialogContent>
+          </Dialog>
         </>
       )}
     </Dialog>

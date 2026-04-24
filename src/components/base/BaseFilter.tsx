@@ -133,15 +133,15 @@ export default function BaseFilter<T extends BaseFilterType>({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={`max-w-4xl bg-sidebar border-sidebar-border ${className}`}>
+      <DialogContent className={`max-w-4xl w-[calc(100%-1rem)] sm:w-[calc(100%-2rem)] max-h-[95vh] sm:max-h-[90vh] p-4 sm:p-6 flex flex-col bg-sidebar border-sidebar-border ${className}`}>
         <DialogHeader>
-          <DialogTitle className="text-sidebar-foreground">{finalTitle}</DialogTitle>
+          <DialogTitle className="text-sidebar-foreground pr-8">{finalTitle}</DialogTitle>
           <DialogDescription className="text-sidebar-foreground/70">
             {finalDescription}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 max-h-96 overflow-y-auto">
+        <div className="space-y-3 md:space-y-4 flex-1 min-h-0 overflow-y-auto -mx-1 px-1">
           {localFilters.map((filter, index) => (
             <BaseFilterRow
               key={`filter-${index}`}
@@ -159,30 +159,30 @@ export default function BaseFilter<T extends BaseFilterType>({
             type="button"
             variant="outline"
             onClick={addFilter}
-            className="w-full bg-sidebar border-sidebar-border text-sidebar-foreground hover:bg-sidebar-accent"
+            className="w-full h-11 md:h-9 bg-sidebar border-sidebar-border text-sidebar-foreground hover:bg-sidebar-accent"
           >
             <Plus className="h-4 w-4 mr-2" />
             {finalAddText}
           </Button>
         </div>
 
-        <DialogFooter className="flex justify-between">
+        <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-between gap-2">
           <Button
             variant="outline"
             onClick={handleClear}
-            className="bg-sidebar border-sidebar-border text-sidebar-foreground hover:bg-sidebar-accent"
+            className="h-11 md:h-9 w-full sm:w-auto bg-sidebar border-sidebar-border text-sidebar-foreground hover:bg-sidebar-accent"
           >
             {finalClearText}
           </Button>
-          <div className="flex gap-2">
+          <div className="flex flex-col-reverse sm:flex-row gap-2 w-full sm:w-auto">
             <Button
               variant="outline"
               onClick={handleClose}
-              className="bg-sidebar border-sidebar-border text-sidebar-foreground hover:bg-sidebar-accent"
+              className="h-11 md:h-9 w-full sm:w-auto bg-sidebar border-sidebar-border text-sidebar-foreground hover:bg-sidebar-accent"
             >
               {translations.cancel}
             </Button>
-            <PrimaryActionButton label={finalApplyText} onClick={handleApply} size="default" />
+            <PrimaryActionButton label={finalApplyText} onClick={handleApply} size="default" className="h-11 md:h-9 w-full sm:w-auto" />
           </div>
         </DialogFooter>
       </DialogContent>

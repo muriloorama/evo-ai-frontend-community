@@ -191,6 +191,7 @@ export interface WhatsappCloudPayload {
       api_key: string;
       phone_number_id: string;
       waba_id: string;
+      webhook_verify_token?: string;
     };
   };
 }
@@ -338,11 +339,46 @@ export type ChannelPayload =
   | WhatsappCloudPayload
   | WhatsappEvolutionPayload
   | WhatsappEvolutionGoPayload
+  | WhatsappUazapiPayload
   | WhatsappTwilioPayload
   | WhatsappNotificamePayload
   | WhatsappZapiPayload
   | SmsTwilioPayload
   | SmsBandwidthPayload;
+
+export interface WhatsappUazapiPayload {
+  name: string;
+  display_name?: string;
+  channel: {
+    type: 'whatsapp';
+    provider: 'uazapi';
+    phone_number: string;
+    provider_config?: {
+      api_url?: string;
+      admin_token?: string;
+      instance_name?: string;
+      instance_token?: string;
+      webhook_verify_token?: string;
+    };
+  };
+}
+
+export interface UazapiConnectionParams {
+  apiUrl: string;
+  adminToken: string;
+  instanceName: string;
+  phoneNumber: string;
+}
+
+export interface UazapiAuthorizationResponse {
+  success: boolean;
+  instance_token?: string;
+  instance_name?: string;
+  api_url?: string;
+  phone_number?: string;
+  instance?: Record<string, unknown>;
+  error?: string;
+}
 
 // Response type for channel list
 export type InboxesResponse = PaginatedResponse<Inbox>;
@@ -700,6 +736,11 @@ export type MessageTemplateComponent = {
   type: 'HEADER' | 'BODY' | 'FOOTER' | 'BUTTONS';
   format?: 'TEXT' | 'IMAGE' | 'VIDEO' | 'DOCUMENT';
   text?: string;
+  example?: {
+    header_text?: string[];
+    header_handle?: string[];
+    body_text?: string[][];
+  };
   buttons?: Array<{
     type: 'URL' | 'PHONE_NUMBER' | 'QUICK_REPLY';
     text: string;
@@ -739,9 +780,11 @@ export interface TemplateFormData {
   language: string;
   category?: 'MARKETING' | 'UTILITY' | 'AUTHENTICATION' | 'TRANSACTIONAL';
   template_type?: 'text' | 'interactive' | 'media' | 'location';
-  headerFormat?: 'TEXT' | 'IMAGE' | 'VIDEO' | 'DOCUMENT';
+  headerFormat?: 'NONE' | 'TEXT' | 'IMAGE' | 'VIDEO' | 'DOCUMENT';
   headerText?: string;
+  headerMediaUrl?: string;
   bodyText?: string;
+  bodyExamples?: string[];
   footerText?: string;
   buttons?: Array<{
     type: 'URL' | 'PHONE_NUMBER' | 'QUICK_REPLY';

@@ -38,13 +38,15 @@ function SectionLayout({
   headerActions,
 }: SectionLayoutProps) {
   return (
-    <section className={`pt-8 ${withBorder ? 'border-t border-sidebar-border' : ''} pb-8`}>
-      <div className="grid grid-cols-4 gap-5 mb-5">
-        <div className="col-span-3">
-          <h4 className="text-lg font-medium text-sidebar-foreground mb-2">{title}</h4>
+    <section className={`pt-6 md:pt-8 ${withBorder ? 'border-t border-sidebar-border' : ''} pb-6 md:pb-8`}>
+      <div className="flex items-start justify-between gap-3 md:grid md:grid-cols-4 md:gap-5 mb-4 md:mb-5">
+        <div className="flex-1 min-w-0 md:col-span-3">
+          <h4 className="text-base md:text-lg font-medium text-sidebar-foreground mb-1.5 md:mb-2">{title}</h4>
           <p className="text-sidebar-foreground/70 text-sm">{description}</p>
         </div>
-        <div className="col-span-1 flex justify-end">{headerActions}</div>
+        {headerActions && (
+          <div className="md:col-span-1 flex justify-end shrink-0">{headerActions}</div>
+        )}
       </div>
       <div className="text-sidebar-foreground">{children}</div>
     </section>
@@ -293,14 +295,14 @@ export default function AccountSettings() {
   }
 
   return (
-    <div className="h-full flex flex-col p-4">
+    <div className="h-full flex flex-col p-3 md:p-4">
       <SettingsTour />
       <div data-tour="settings-header">
         <BaseHeader title={t('title')} subtitle={t('subtitle')} />
       </div>
 
       <div className="flex-1 overflow-auto">
-        <div className="max-w-5xl w-full mx-auto">
+        <div className="max-w-5xl w-full mx-auto px-1 md:px-0">
           {/* Configurações Gerais */}
           <div data-tour="settings-general">
           <SectionLayout
@@ -380,7 +382,7 @@ export default function AccountSettings() {
               )}
 
               <div>
-                <Button type="submit" disabled={saving} className="bg-primary hover:bg-primary/85 text-primary-foreground border-0 font-semibold">
+                <Button type="submit" disabled={saving} className="h-11 md:h-9 w-full md:w-auto bg-primary hover:bg-primary/85 text-primary-foreground border-0 font-semibold">
                   {saving ? t('buttons.saving') : t('buttons.save')}
                 </Button>
               </div>
@@ -483,7 +485,7 @@ export default function AccountSettings() {
                   <Button
                     onClick={handleAutoResolveSubmit}
                     disabled={saving}
-                    className="bg-primary hover:bg-primary/85 text-primary-foreground border-0 font-semibold"
+                    className="h-11 md:h-9 w-full md:w-auto bg-primary hover:bg-primary/85 text-primary-foreground border-0 font-semibold"
                   >
                     {saving ? t('buttons.saving') : t('buttons.updateAutoResolve')}
                   </Button>

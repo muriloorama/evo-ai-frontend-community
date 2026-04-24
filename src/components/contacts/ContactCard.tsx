@@ -45,7 +45,7 @@ export default function ContactCard({
           </div>
           <div className="flex flex-col gap-2">
             <ContactTypeBadge type={contact.type || 'person'} />
-            <ContactStatusBadge blocked={contact.blocked} className="justify-center" />
+            <ContactStatusBadge blocked={contact.blocked ?? false} className="justify-center" />
           </div>
         </div>
 

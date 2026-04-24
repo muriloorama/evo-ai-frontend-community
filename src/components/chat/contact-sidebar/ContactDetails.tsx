@@ -2,9 +2,7 @@
 import React, { useState } from 'react';
 
 import { useLanguage } from '@/hooks/useLanguage';
-import { useConversations } from '@/hooks/chat/useConversations';
-
-import { contactsService } from '@/services/contacts/contactsService';
+import { useContactUpdate } from '@/hooks/contacts/useContactUpdate';
 
 import { Button } from '@evoapi/design-system/button';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@evoapi/design-system/card';
@@ -37,7 +35,7 @@ interface ContactDetailsProps {
 const ContactDetails: React.FC<ContactDetailsProps> = ({ contact }) => {
   const { t } = useLanguage('chat');
 
-  const { updateContactInConversations } = useConversations();
+  const { updateContact } = useContactUpdate();
 
   const [contactModalOpen, setContactModalOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<FullContact | null>(null);
@@ -64,40 +62,12 @@ const ContactDetails: React.FC<ContactDetailsProps> = ({ contact }) => {
 
   const handleContactFormSubmit = async (data: ContactFormData) => {
     if (!contact?.id) return;
-
     try {
-      // Atualizar o contato
-      const updatedContactResponse = await contactsService.updateContact(contact.id, data);
-
-      // Converter o tipo de Contact de @/types/contacts para Contact de @/pages/Customer/Chat/types/api
-      const updatedContact: Contact = {
-        id: updatedContactResponse.id,
-        name: updatedContactResponse.name,
-        email: updatedContactResponse.email || null,
-        phone_number: updatedContactResponse.phone_number || null,
-        avatar: updatedContactResponse.avatar || null,
-        avatar_url: updatedContactResponse.avatar_url || null,
-        identifier: updatedContactResponse.identifier || null,
-        custom_attributes: updatedContactResponse.custom_attributes || {},
-        additional_attributes: (updatedContactResponse.additional_attributes || {}) as Record<string, unknown>,
-        contact_inboxes: (updatedContactResponse.contact_inboxes || []) as unknown as Record<string, unknown>,
-        location: null, // Propriedade não disponível no tipo de @/types/contacts
-        country_code: null, // Propriedade não disponível no tipo de @/types/contacts
-        blocked: updatedContactResponse.blocked || false,
-        last_activity_at: updatedContactResponse.last_activity_at || '',
-        created_at: updatedContactResponse.created_at || '',
-        updated_at: updatedContactResponse.updated_at || '',
-      };
-
-      updateContactInConversations(updatedContact);
-
-      toast.success(t('contactSidebar.contactDetails.actions.updateSuccess'));
-
+      await updateContact(contact.id, data);
       setContactModalOpen(false);
       setEditingContact(null);
-    } catch (error) {
-      console.error('Error saving contact:', error);
-      toast.error(t('contactSidebar.contactDetails.actions.updateError'));
+    } catch {
+      // toast is already emitted by useContactUpdate
     }
   };
 

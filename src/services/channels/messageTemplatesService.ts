@@ -238,21 +238,37 @@ const MessageTemplateService = {
     // For structured channels (WhatsApp, Facebook, Instagram)
     if (isStructured && config.supportsStructured) {
       const components: MessageTemplateComponent[] = [];
-      // Add header component
-      if (templateData.headerText && templateData.headerFormat) {
-        components.push({
-          type: 'HEADER',
-          format: templateData.headerFormat,
-          text: templateData.headerText,
-        });
+      // Add header component (skip when NONE)
+      const hf = templateData.headerFormat;
+      if (hf && hf !== 'NONE') {
+        if (hf === 'TEXT' && templateData.headerText) {
+          components.push({
+            type: 'HEADER',
+            format: 'TEXT',
+            text: templateData.headerText,
+          });
+        } else if (
+          (hf === 'IMAGE' || hf === 'VIDEO' || hf === 'DOCUMENT') &&
+          templateData.headerMediaUrl
+        ) {
+          components.push({
+            type: 'HEADER',
+            format: hf,
+            example: { header_handle: [templateData.headerMediaUrl] },
+          });
+        }
       }
 
       // Add body component (required for structured templates)
       if (templateData.bodyText) {
-        components.push({
+        const bodyComponent: MessageTemplateComponent = {
           type: 'BODY',
           text: templateData.bodyText,
-        });
+        };
+        if (templateData.bodyExamples && templateData.bodyExamples.length > 0) {
+          bodyComponent.example = { body_text: [templateData.bodyExamples] };
+        }
+        components.push(bodyComponent);
       }
 
       // Add footer component

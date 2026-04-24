@@ -20,7 +20,8 @@
       "userFallback": "Utilisateur",
       "agent": {
         "badge": "Agent",
-        "fallback": "Agent"
+        "fallback": "Agent",
+        "fromPhone": "Mobile"
       },
       "bot": {
         "badge": "🤖 Bot",
@@ -781,6 +782,10 @@
     "assignAgent": "Attribuer un Agent",
     "assignTeam": "Attribuer une équipe",
     "assignTag": "Attribuer une étiquette",
+    "lockGroup": "Verrouiller le groupe",
+    "unlockGroup": "Déverrouiller le groupe",
+    "groupLocked": "Groupe verrouillé — les nouveaux messages seront ignorés",
+    "groupUnlocked": "Groupe déverrouillé — réception des messages à nouveau",
     "deleteConversation": "Supprimer la conversation"
   },
   "conversationBadges": {

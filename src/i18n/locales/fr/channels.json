@@ -7,7 +7,8 @@
   },
   "card": {
     "channelId": "ID du Canal",
-    "type": "Type"
+    "type": "Type",
+    "phoneNumber": "Numéro"
   },
   "table": {
     "channels": "Canaux",
@@ -261,6 +262,8 @@
         "facebookNotConfigured": "Facebook n'est pas configuré",
         "instagramNotConfigured": "Instagram n'est pas configuré",
         "whatsappNotConfigured": "WhatsApp n'est pas configuré",
+        "whatsappNotConfiguredDescription": "Configurez l'App ID et le Config ID de WhatsApp Cloud dans les paramètres d'administration.",
+        "configureAction": "Configurer",
         "sdkNotLoaded": "Le SDK Facebook n'a pas pu être chargé",
         "loginCancelled": "Connexion annulée",
         "pageNotFound": "Page non trouvée",
@@ -612,6 +615,8 @@
         "templateType": "Type de Modèle",
         "templateTypes": {
           "text": "Texte",
+          "interactive": "Interactif",
+          "media": "Média",
           "image": "Image",
           "video": "Vidéo",
           "document": "Document",
@@ -627,6 +632,7 @@
         },
         "headerFormat": "Format de l'En-tête",
         "headerFormats": {
+          "none": "Pas d'en-tête",
           "text": "Texte",
           "image": "Image",
           "video": "Vidéo",
@@ -634,13 +640,20 @@
         },
         "headerText": "Texte de l'En-tête",
         "headerTextPlaceholder": "Entrez le texte de l'en-tête",
+        "headerMediaUrl": "URL d'exemple du média",
+        "headerMediaUrlHelp": "Meta exige une URL d'exemple du média pour approuver le modèle.",
         "bodyText": "Texte du Corps",
         "bodyTextPlaceholder": "Entrez le texte du corps du message",
-        "footerText": "Texte du Pied de Page",
+        "footerText": "Texte du Pied de Page (facultatif)",
         "footerTextPlaceholder": "Entrez le texte du pied de page (facultatif)",
         "variablesHelp": "Utilisez la syntaxe {{variable}} pour les valeurs dynamiques",
+        "variableExamples": "Exemples des variables",
+        "variableExamplesHelp": "Meta exige une valeur d'exemple pour chaque variable {{...}} du corps.",
+        "variableExamplePlaceholder": "Ex : Jean, 49,90 €, etc.",
         "buttons": "Boutons",
         "addButton": "Ajouter un Bouton",
+        "buttonsLimitReached": "Limite de 3 boutons atteinte.",
+        "buttonsNoEmoji": "Les emojis ne sont pas autorisés dans les boutons.",
         "buttonTypes": {
           "quickReply": "Réponse Rapide",
           "url": "URL",
@@ -703,7 +716,10 @@
         "createError": "Erreur lors de la création du modèle",
         "updateError": "Erreur lors de la modification du modèle",
         "deleteError": "Erreur lors de la suppression du modèle",
-        "requiredFields": "Veuillez remplir tous les champs obligatoires"
+        "requiredFields": "Veuillez remplir tous les champs obligatoires",
+        "headerMediaUrlRequired": "Fournissez une URL d'exemple pour l'en-tête multimédia.",
+        "variableExamplesRequired": "Fournissez une valeur d'exemple pour chaque variable du corps.",
+        "buttonsInvalid": "Vérifiez les boutons — le texte ne peut pas être vide et doit comporter au maximum 20 caractères."
       },
       "success": {
         "syncSuccess": "Modèles synchronisés avec succès !",
@@ -767,6 +783,35 @@
         }
       },
       "whatsapp": {
+        "cloudCredentials": {
+          "title": "Identifiants WhatsApp Cloud",
+          "description": "Mettez à jour le Phone Number ID, WABA ID et Access Token sans perdre la boîte de réception.",
+          "editButton": "Modifier",
+          "saveButton": "Enregistrer",
+          "cancelButton": "Annuler",
+          "fields": {
+            "phoneNumber": "Numéro de téléphone",
+            "phoneNumberId": "ID du numéro de téléphone (Phone Number ID)",
+            "wabaId": "ID du compte entreprise (WABA ID)",
+            "apiKey": "Access Token (API Key)"
+          },
+          "success": {
+            "saved": "Identifiants mis à jour avec succès !"
+          },
+          "errors": {
+            "missingFields": "Renseignez Phone Number ID, WABA ID et Access Token.",
+            "saveError": "Erreur lors de l'enregistrement. Vérifiez les données et réessayez."
+          },
+          "webhook": {
+            "title": "Webhook sur Meta",
+            "description": "Copiez ces valeurs et collez-les dans Meta for Developers → votre App → WhatsApp → Configuration → Webhooks.",
+            "callbackUrl": "Callback URL",
+            "verifyToken": "Verify Token",
+            "urlUnavailable": "URL indisponible — enregistrez d'abord le canal",
+            "regenerate": "Générer un nouveau token",
+            "regenerated": "Nouveau Verify Token généré"
+          }
+        },
         "instance": {
           "statusTitle": "Statut de l'Instance",
           "statusConnected": "Connecté",

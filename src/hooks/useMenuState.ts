@@ -2,6 +2,15 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { MenuItem } from '@/components/layout/config/menuItems';
 
+// Strip the Chatwoot-style /app/accounts/:n prefix from a pathname so menu
+// active-detection (which compares against bare hrefs from menuItems.ts) keeps
+// working after the URL refactor. /app/accounts/7/conversations → /conversations
+const ACCOUNT_PREFIX_RE = /^\/app\/accounts\/\d+(?=\/|$)/;
+function stripAccountPrefix(pathname: string): string {
+  const stripped = pathname.replace(ACCOUNT_PREFIX_RE, '');
+  return stripped === '' ? '/' : stripped;
+}
+
 interface MenuState {
   activeSubmenu: MenuItem | null;
   activeMenu: string | null;
@@ -20,7 +29,8 @@ export function useMenuState(
   menuItems: MenuItem[],
   setIsMobileMenuOpen?: (open: boolean) => void
 ): UseMenuStateReturn {
-  const { pathname } = useLocation();
+  const location = useLocation();
+  const pathname = stripAccountPrefix(location.pathname);
 
   const [state, setState] = useState<MenuState>({
     activeSubmenu: null,

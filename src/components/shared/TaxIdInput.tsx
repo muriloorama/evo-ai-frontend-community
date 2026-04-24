@@ -15,21 +15,30 @@ interface TaxIdInputProps {
   id?: string;
 }
 
+// Brazilian tax id: imask "mask array" picks the shorter CPF mask until the
+// user types the 12th digit, then switches to the CNPJ mask automatically.
+// This lets us show a single "CPF/CNPJ" field that formats either one.
+const BR_MASK_PATTERNS = [
+  { mask: '000.000.000-00', maxLength: 11 },
+  { mask: '00.000.000/0000-00' },
+] as const;
+
 /**
  * Tax ID Configuration by Country
  */
 const TAX_ID_CONFIG: Record<string, {
-  person: { mask?: string; placeholder: string };
-  company: { mask?: string; placeholder: string };
+  person: { mask?: string | typeof BR_MASK_PATTERNS; placeholder: string };
+  company: { mask?: string | typeof BR_MASK_PATTERNS; placeholder: string };
 }> = {
   BR: {
     person: {
-      mask: '000.000.000-00',
-      placeholder: '000.000.000-00',
+      // Auto-detects CPF vs CNPJ by digit count — same field accepts both.
+      mask: BR_MASK_PATTERNS,
+      placeholder: '000.000.000-00 ou 00.000.000/0000-00',
     },
     company: {
-      mask: '00.000.000/0000-00',
-      placeholder: '00.000.000/0000-00',
+      mask: BR_MASK_PATTERNS,
+      placeholder: '000.000.000-00 ou 00.000.000/0000-00',
     },
   },
   US: {
@@ -123,11 +132,14 @@ export const TaxIdInput: React.FC<TaxIdInputProps> = ({
     className
   );
 
-  // If country has mask, use IMaskInput
+  // If country has mask, use IMaskInput.
+  // `mask` accepts either a string pattern or an array of pattern objects
+  // (imask picks the best match by length) — react-imask's type doesn't
+  // cover the array variant here, so the cast keeps runtime behaviour.
   if (hasMask) {
     return (
       <IMaskInput
-        mask={config.mask!}
+        mask={config.mask as never}
         value={value}
         unmask={true} // Return only numbers/letters
         onAccept={(value: string) => onChange(value)}

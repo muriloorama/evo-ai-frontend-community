@@ -11,6 +11,8 @@ import {
 } from '@evoapi/design-system';
 import MenuItem from './MenuItem';
 import { MenuItem as MenuItemType } from '../config/menuItems';
+import WorkspaceSwitcher from './WorkspaceSwitcher';
+import { useAccountPath } from '@/hooks/useAccountPath';
 
 // Utility function for className merging
 function cn(...classes: (string | undefined | null | false)[]) {
@@ -39,10 +41,10 @@ export default function Sidebar({
   const location = useLocation();
   const pathname = location.pathname;
   const { t } = useLanguage('layout');
+  const buildAccountPath = useAccountPath();
   const currentYear = new Date().getFullYear();
 
   const companyName = t('sidebar.footer.brand');
-  const supportWhatsappUrl = 'https://api.whatsapp.com/send/?phone=553196219989&text=Ol%C3%A1%21+Preciso+de+suporte.&type=phone_number&app_absent=0';
 
   const mainMenuItems = menuItems.filter(item => item.href !== '/tutorials');
   const tutorialsItem = menuItems.find(item => item.href === '/tutorials');
@@ -57,6 +59,14 @@ export default function Sidebar({
         )}
       >
         <TooltipProvider delayDuration={300}>
+          {/* Workspace switcher pinned at the top of the sidebar.
+              The super-admin entry is rendered inside the dropdown — see
+              WorkspaceSwitcher (it auto-toggles between "Painel Super Admin"
+              and "Voltar para o app" based on the current path). */}
+          <div className="px-2 pt-3 pb-2 border-b border-sidebar-border">
+            <WorkspaceSwitcher isCollapsed={isCollapsed} />
+          </div>
+
           {/* Navigation Menu */}
           <nav className="space-y-1.5 flex-1 px-2 py-4">
             {mainMenuItems.map(item => (
@@ -95,24 +105,6 @@ export default function Sidebar({
                 <div className="text-sm text-primary font-medium">{companyName}</div>
                 <div className="text-xs text-muted-foreground mt-1">
                   {t('sidebar.footer.copyright', { year: currentYear })}
-                </div>
-                <div className="mt-2 flex flex-col gap-1 text-xs">
-                  <a
-                    href="https://docs.evolutionfoundation.com.br/"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {t('sidebar.footer.documentation')}
-                  </a>
-                  <a
-                    href={supportWhatsappUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {t('sidebar.footer.support')}
-                  </a>
                 </div>
               </>
             )}
@@ -153,23 +145,33 @@ export default function Sidebar({
           {/* Submenu Items */}
           <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
             {activeSubmenu.subItems?.map(subItem => {
-              // For submenu items, check exact match first, then startsWith
-              // But if another subitem has a more specific match (longer path), prefer that one
-              const exactMatch = pathname === subItem.href;
-              const startsWithMatch = pathname.startsWith(subItem.href + '/');
+              // Active-detection compares the bare menu href against the live
+              // pathname, which now lives under /app/accounts/:n/. We resolve
+              // the target through useAccountPath so the suffix match still
+              // works even when the URL carries the workspace prefix.
+              const scopedHref = buildAccountPath(subItem.href);
+              const exactMatch = pathname === subItem.href || pathname === scopedHref;
+              const startsWithMatch =
+                pathname.startsWith(subItem.href + '/') || pathname.startsWith(scopedHref + '/');
 
               // Check if any other subitem has a more specific match
-              const hasMoreSpecificMatch = activeSubmenu.subItems?.some(otherSubItem =>
-                otherSubItem.href !== subItem.href &&
-                (pathname === otherSubItem.href || pathname.startsWith(otherSubItem.href + '/')) &&
-                otherSubItem.href.length > subItem.href.length
-              );
+              const hasMoreSpecificMatch = activeSubmenu.subItems?.some(otherSubItem => {
+                const otherScoped = buildAccountPath(otherSubItem.href);
+                return (
+                  otherSubItem.href !== subItem.href &&
+                  (pathname === otherSubItem.href ||
+                    pathname === otherScoped ||
+                    pathname.startsWith(otherSubItem.href + '/') ||
+                    pathname.startsWith(otherScoped + '/')) &&
+                  otherSubItem.href.length > subItem.href.length
+                );
+              });
 
               const isSubActive = exactMatch || (startsWithMatch && !hasMoreSpecificMatch);
               return (
                 <Link
                   key={subItem.href}
-                  to={subItem.href}
+                  to={scopedHref}
                   className={cn(
                     'flex items-center gap-3 px-3 py-2.5 rounded-md transition-all text-sm',
                     isSubActive

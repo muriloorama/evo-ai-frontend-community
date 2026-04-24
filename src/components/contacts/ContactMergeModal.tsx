@@ -93,7 +93,7 @@ export default function ContactMergeModal({
                   <div className="flex-1 space-y-3">
                     <Label htmlFor={contact.id} className="flex items-center gap-3 cursor-pointer">
                       <Avatar className="h-12 w-12">
-                        <AvatarImage src={contact.avatar_url || contact.thumbnail} />
+                        <AvatarImage src={contact.avatar_url || contact.thumbnail || undefined} />
                         <AvatarFallback className="bg-primary/10 text-primary">
                           {getInitials(contact.name)}
                         </AvatarFallback>
@@ -154,7 +154,7 @@ export default function ContactMergeModal({
                                 key={index}
                                 className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary"
                               >
-                                {label}
+                                {typeof label === 'string' ? label : label.name}
                               </span>
                             ))}
                             {contact.labels.length > 3 && (

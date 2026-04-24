@@ -23,7 +23,7 @@ import { usePermissions } from '@/contexts/PermissionsContext';
 import { useMenuState } from '@/hooks/useMenuState';
 import { useDashboardApps } from '@/hooks/useDashboardApps';
 import { injectDashboardAppsIntoMenu } from '@/utils/injectDashboardApps';
-import { WelcomeTourModal } from '@/components/WelcomeTourModal';
+// import { WelcomeTourModal } from '@/components/WelcomeTourModal'; // desabilitado por solicitação
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -107,7 +107,17 @@ export default function MainLayout({ children }: MainLayoutProps) {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background transition-colors duration-150 ease-in-out">
+    <div
+      className="flex flex-col bg-background transition-colors duration-150 ease-in-out overflow-hidden overscroll-none"
+      style={{
+        // 100dvh ajusta conforme a URL bar aparece/some no mobile; h-screen
+        // (100vh) fica estático e deixa header/footer atrás das barras do
+        // navegador, obrigando o usuário a puxar a tela pra ver os controles.
+        height: '100dvh',
+        paddingTop: 'env(safe-area-inset-top)',
+        paddingBottom: 'env(safe-area-inset-bottom)',
+      }}
+    >
 
       {/* Header */}
       <Header
@@ -145,8 +155,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
       </div>
 
-      {/* Tour */}
-      <WelcomeTourModal />
+      {/* Tour modal removido */}
 
       {/* Logout Dialog */}
       <Dialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>

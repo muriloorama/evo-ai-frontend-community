@@ -14,6 +14,26 @@ export interface UserType {
 
 import type { StandardResponse, ResponseMeta } from '@/types/core';
 
+export interface AccountMembership {
+  id: string;
+  // Sequential, human-friendly account identifier surfaced in URLs
+  // (Chatwoot-style /app/accounts/:number/...). Optional for back-compat with
+  // the legacy single-account payload.
+  number?: number;
+  name: string;
+  slug: string;
+  status: 'active' | 'suspended' | 'archived' | string;
+  role: { id: string; key: string; name: string };
+  // Legacy fields still returned by the single-account shim; safe to ignore
+  // once all accounts come from the real `accounts` table.
+  domain?: string | null;
+  support_email?: string | null;
+  locale?: string | null;
+  features?: Record<string, unknown>;
+  settings?: Record<string, unknown>;
+  custom_attributes?: Record<string, unknown>;
+}
+
 export interface LoginData {
   user: {
     id: string;
@@ -25,6 +45,11 @@ export interface LoginData {
     confirmed?: boolean;
     role?: Role;
   };
+  // Multi-account claims populated by the Auth service (Fase 1.4).
+  accounts?: AccountMembership[];
+  active_account_id?: string | null;
+  active_account_number?: number | null;
+  super_admin?: boolean;
   token: {
     access_token?: string;
     token?: {

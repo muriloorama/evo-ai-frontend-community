@@ -28,6 +28,25 @@ const processApiResponse = (response: any): LoginResponse => {
     useAuthStore.getState().setAccessToken(token);
   }
 
+  // Fase 1.4: login/validate/me now return multi-account claims alongside the
+  // user object. Keep the store in sync so the header dropdown and super-admin
+  // guards have what they need without extra round-trips.
+  if (loginData?.accounts) {
+    useAuthStore.getState().setAccounts(loginData.accounts);
+  }
+  if (loginData?.active_account_id !== undefined) {
+    useAuthStore.getState().setActiveAccountId(loginData.active_account_id || null);
+  }
+  if (loginData?.active_account_number !== undefined) {
+    const num = loginData.active_account_number;
+    useAuthStore
+      .getState()
+      .setActiveAccountNumber(typeof num === 'number' ? num : null);
+  }
+  if (loginData?.super_admin !== undefined) {
+    useAuthStore.getState().setSuperAdmin(!!loginData.super_admin);
+  }
+
   // Backend retorna formato padrão: { success: true, data: {...}, meta: {...}, message: "..." }
   return {
     success: true,
@@ -171,6 +190,56 @@ export const verifyMfa = async (data: {
   return {
     response: processedResponse,
   };
+};
+
+// Switches the logged-in user's active account. The Auth service reissues the
+// JWT with the new `active_account_id` claim; we refresh the store and
+// reinitialise app data so scoped queries pick up the new account.
+//
+// Accepts either the UUID `id` (back-compat) or the sequential `number`
+// (Chatwoot-style routing). The Auth service understands both.
+export const switchAccount = async (
+  account: string | { id?: string; number?: number },
+) => {
+  const body =
+    typeof account === 'string'
+      ? { account_id: account }
+      : account.number !== undefined
+        ? { account_number: account.number }
+        : { account_id: account.id };
+
+  const response = await apiAuth.post('/auth/switch_account', body);
+  const data = extractData<{
+    access_token?: string;
+    active_account_id?: string;
+    active_account_number?: number;
+    accounts?: any[];
+    super_admin?: boolean;
+  }>(response);
+
+  if (data.access_token) {
+    useAuthStore.getState().setAccessToken(data.access_token);
+  }
+  if (data.active_account_id) {
+    useAuthStore.getState().setActiveAccountId(data.active_account_id);
+  }
+  if (data.active_account_number !== undefined) {
+    useAuthStore
+      .getState()
+      .setActiveAccountNumber(
+        typeof data.active_account_number === 'number'
+          ? data.active_account_number
+          : null,
+      );
+  }
+  if (data.accounts) {
+    useAuthStore.getState().setAccounts(data.accounts as any);
+  }
+  if (data.super_admin !== undefined) {
+    useAuthStore.getState().setSuperAdmin(!!data.super_admin);
+  }
+
+  return data;
 };
 
 // New functions for accounts and profile management

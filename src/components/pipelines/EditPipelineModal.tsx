@@ -27,6 +27,7 @@ import TeamsService from '@/services/teams/teamsService';
 import { Team } from '@/types/users/teams';
 import { LocalAttributeDefinition, LocalAttributeDefinitionPayload } from '@/types/pipelines/localAttributeDefinition';
 import PipelineCustomAttributes from './PipelineCustomAttributes';
+import PipelineServiceCatalog from './PipelineServiceCatalog';
 
 interface EditPipelineModalProps {
   open: boolean;
@@ -152,7 +153,7 @@ export default function EditPipelineModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="sm:max-w-2xl w-[calc(100%-1rem)] sm:w-[calc(100%-2rem)] max-h-[95vh] sm:max-h-[90vh] p-4 sm:p-6 overflow-hidden flex flex-col">
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
           <DialogHeader>
             <DialogTitle>{t('editPipeline.title')}</DialogTitle>
@@ -162,9 +163,10 @@ export default function EditPipelineModal({
           </DialogHeader>
 
           <Tabs defaultValue="details" className="flex-1 flex flex-col min-h-0">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="details">{t('editPipeline.details')}</TabsTrigger>
               <TabsTrigger value="attributes">{t('editPipeline.customAttributes')}</TabsTrigger>
+              <TabsTrigger value="services">Serviços</TabsTrigger>
             </TabsList>
 
             <TabsContent value="details" className="py-4 overflow-y-auto flex-1">
@@ -324,6 +326,10 @@ export default function EditPipelineModal({
                 disabled={loading}
                 pipelineId={pipeline.id}
               />
+            </TabsContent>
+
+            <TabsContent value="services" className="py-4 overflow-y-auto flex-1">
+              <PipelineServiceCatalog pipelineId={pipeline.id} />
             </TabsContent>
           </Tabs>
 

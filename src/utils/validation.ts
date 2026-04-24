@@ -207,7 +207,9 @@ export function formatCNPJ(cnpj: string): string {
  */
 export function getTaxIdLabel(country: string, type: 'person' | 'company'): string {
   const labels: Record<string, { person: string; company: string }> = {
-    BR: { person: 'CPF', company: 'CNPJ' },
+    // Same label for person/company on BR — a single "CPF/CNPJ" field now
+    // auto-detects the format from the digit count via TaxIdInput.
+    BR: { person: 'CPF/CNPJ', company: 'CPF/CNPJ' },
     US: { person: 'SSN', company: 'EIN' },
     AR: { person: 'CUIL', company: 'CUIT' },
     MX: { person: 'RFC', company: 'RFC' },

@@ -8,6 +8,7 @@
   "card": {
     "channelId": "Canal ID",
     "type": "Tipo",
+    "phoneNumber": "Número",
     "displayName": "Nome de Exibição"
   },
   "table": {
@@ -263,6 +264,8 @@
         "facebookNotConfigured": "Facebook não está configurado",
         "instagramNotConfigured": "Instagram não está configurado",
         "whatsappNotConfigured": "WhatsApp não está configurado",
+        "whatsappNotConfiguredDescription": "Configure o App ID e o Config ID do WhatsApp Cloud nas configurações administrativas.",
+        "configureAction": "Configurar",
         "sdkNotLoaded": "SDK do Facebook não foi carregado",
         "loginCancelled": "Login cancelado",
         "pageNotFound": "Página não encontrada",
@@ -629,12 +632,14 @@
         "templateType": "Tipo de Template",
         "templateTypes": {
           "text": "Texto",
+          "interactive": "Interativo",
+          "media": "Multimédia",
           "image": "Imagem",
           "video": "Vídeo",
           "document": "Documento",
           "audio": "Áudio",
           "location": "Localização",
-          "contact": "Contato"
+          "contact": "Contacto"
         },
         "categories": {
           "marketing": "Marketing",
@@ -644,11 +649,19 @@
         },
         "headerFormat": "Formato do Cabeçalho",
         "headerFormats": {
+          "none": "Sem cabeçalho",
           "text": "Texto",
           "image": "Imagem",
           "video": "Vídeo",
           "document": "Documento"
         },
+        "headerMediaUrl": "URL de exemplo da multimédia",
+        "headerMediaUrlHelp": "A Meta precisa de um URL de exemplo da multimédia para aprovar o template.",
+        "variableExamples": "Exemplos das variáveis",
+        "variableExamplesHelp": "A Meta exige um valor de exemplo para cada variável {{...}} do corpo.",
+        "variableExamplePlaceholder": "Ex: João, R$ 49,90, etc.",
+        "buttonsLimitReached": "Limite de 3 botões atingido.",
+        "buttonsNoEmoji": "Emojis não são permitidos em botões.",
         "headerText": "Texto do Cabeçalho",
         "headerTextPlaceholder": "Digite o texto do cabeçalho",
         "bodyText": "Texto do Corpo",
@@ -742,8 +755,11 @@
         "syncError": "Erro ao sincronizar templates",
         "createError": "Erro ao criar template",
         "updateError": "Erro ao atualizar template",
-        "deleteError": "Erro ao deletar template",
-        "requiredFields": "Preencha todos os campos obrigatórios"
+        "deleteError": "Erro ao eliminar template",
+        "requiredFields": "Preencha todos os campos obrigatórios",
+        "headerMediaUrlRequired": "Indique um URL de exemplo para o cabeçalho de multimédia.",
+        "variableExamplesRequired": "Indique um valor de exemplo para cada variável do corpo.",
+        "buttonsInvalid": "Verifique os botões — texto não pode estar vazio e precisa ter no máximo 20 caracteres."
       },
       "success": {
         "syncSuccess": "Templates sincronizados com sucesso!",
@@ -823,6 +839,35 @@
         }
       },
       "whatsapp": {
+        "cloudCredentials": {
+          "title": "Credenciais do WhatsApp Cloud",
+          "description": "Atualize o App ID do número, WABA ID e Access Token sem perder a caixa de entrada.",
+          "editButton": "Editar",
+          "saveButton": "Guardar",
+          "cancelButton": "Cancelar",
+          "fields": {
+            "phoneNumber": "Número de telefone",
+            "phoneNumberId": "ID do número de telefone (Phone Number ID)",
+            "wabaId": "ID da conta empresarial (WABA ID)",
+            "apiKey": "Access Token (API Key)"
+          },
+          "success": {
+            "saved": "Credenciais atualizadas com sucesso!"
+          },
+          "errors": {
+            "missingFields": "Preencha Phone Number ID, WABA ID e Access Token.",
+            "saveError": "Erro ao guardar credenciais. Verifique os dados e tente novamente."
+          },
+          "webhook": {
+            "title": "Webhook na Meta",
+            "description": "Copie estes dados e cole em Meta for Developers → sua App → WhatsApp → Configuration → Webhooks.",
+            "callbackUrl": "Callback URL",
+            "verifyToken": "Verify Token",
+            "urlUnavailable": "URL indisponível — guarde o canal primeiro",
+            "regenerate": "Gerar novo token",
+            "regenerated": "Novo Verify Token gerado"
+          }
+        },
         "instance": {
           "statusTitle": "Status da Instância",
           "statusConnected": "Conectado",

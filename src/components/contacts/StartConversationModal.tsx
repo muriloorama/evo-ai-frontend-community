@@ -25,6 +25,7 @@ import { conversationAPI } from '@/services/conversations';
 import MessageTemplateService from '@/services/channels/messageTemplatesService';
 import { MessageTemplate } from '@/types/channels/inbox';
 import { ConversationCreateData } from '@/types/chat/api';
+import { useAccountPath } from '@/hooks/useAccountPath';
 
 interface StartConversationModalProps {
   open: boolean;
@@ -39,6 +40,7 @@ export default function StartConversationModal({
   contact,
 }: StartConversationModalProps) {
   const { t } = useLanguage('contacts');
+  const buildAccountPath = useAccountPath();
   const [selectedInboxId, setSelectedInboxId] = useState<string>('');
   const [message, setMessage] = useState('');
   const [availableInboxes, setAvailableInboxes] = useState<ContactableInboxes[]>([]);
@@ -264,12 +266,14 @@ export default function StartConversationModal({
 
       const data = await conversationAPI.create(conversationData);
 
-      // Close modal and redirect to conversation
+      // Close modal and redirect to conversation. Prefer display_id so the
+      // URL is Chatwoot-style (/app/accounts/:n/conversations/42); falls back
+      // to UUID if the backend hasn't populated it yet.
       if (data && data.id) {
         onOpenChange(false);
 
-        // Redirect to conversation like the Vue frontend does
-        window.location.href = `/conversations/${data.id}`;
+        const conversationPathId = (data as { display_id?: number | string }).display_id ?? data.id;
+        window.location.href = buildAccountPath(`/conversations/${conversationPathId}`);
 
         // Reset form
         setMessage('');
@@ -320,9 +324,9 @@ export default function StartConversationModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg w-[calc(100%-1rem)] sm:w-[calc(100%-2rem)] max-h-[95vh] sm:max-h-[90vh] p-4 sm:p-6 flex flex-col">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 pr-8">
             <MessageSquare className="h-5 w-5" />
             {t('startConversation.title')}
           </DialogTitle>
@@ -331,7 +335,7 @@ export default function StartConversationModal({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-5 md:space-y-6 flex-1 min-h-0 overflow-y-auto -mx-1 px-1">
           {/* Contact Info */}
           <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
             <Avatar className="h-10 w-10">
@@ -385,6 +389,11 @@ export default function StartConversationModal({
                         <div className="flex items-center gap-2">
                           {getChannelIcon(inbox.channel_type)}
                           <span>{inbox.name}</span>
+                          {(inbox as { phone_number?: string }).phone_number && (
+                            <span className="text-xs font-mono text-muted-foreground">
+                              ({(inbox as { phone_number?: string }).phone_number})
+                            </span>
+                          )}
                           <Badge
                             variant={inbox.available ? 'default' : 'secondary'}
                             className="ml-auto"
@@ -662,13 +671,13 @@ export default function StartConversationModal({
           )}
 
           {/* Actions */}
-          <div className="flex gap-3">
+          <div className="flex gap-2 sm:gap-3 sticky bottom-0 bg-background pt-3 -mx-1 px-1">
             <Button
               type="button"
               variant="outline"
               onClick={handleCancel}
               disabled={loading}
-              className="flex-1"
+              className="flex-1 h-11 md:h-9"
             >
               {t('startConversation.actions.cancel')}
             </Button>
@@ -693,7 +702,7 @@ export default function StartConversationModal({
                   // Non-WhatsApp with template and variables requires all params filled
                   (!isWhatsAppInbox && useTemplate && selectedTemplate && someTemplateParams()),
               )}
-              className="flex-1"
+              className="flex-1 h-11 md:h-9"
             >
               {loading ? (
                 <>

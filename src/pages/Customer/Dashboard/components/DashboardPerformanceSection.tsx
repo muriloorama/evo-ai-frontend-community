@@ -112,15 +112,15 @@ const DashboardPerformanceSection = ({ data, t }: DashboardPerformanceSectionPro
 
                   return (
                     <div key={stage.id || stage.name} className="group">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <div className={`h-3 w-3 rounded-full ${color}`} />
-                          <span className="font-semibold text-base">{stage.name}</span>
-                          <Badge variant="outline" className="text-xs">
+                      <div className="flex items-start sm:items-center justify-between gap-2 mb-3 flex-wrap">
+                        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                          <div className={`h-3 w-3 rounded-full shrink-0 ${color}`} />
+                          <span className="font-semibold text-sm sm:text-base truncate">{stage.name}</span>
+                          <Badge variant="outline" className="text-xs whitespace-nowrap">
                             {stage.count} {t('dashboard.pipeline.opportunities')}
                           </Badge>
                         </div>
-                        <span className="text-lg font-semibold">{formatCurrency(stage.value)}</span>
+                        <span className="text-base sm:text-lg font-semibold whitespace-nowrap">{formatCurrency(stage.value)}</span>
                       </div>
                       <div className="relative w-full bg-secondary/50 rounded-full h-3 overflow-hidden">
                         <div className={`${color} h-3 rounded-full transition-all duration-500`} style={{ width: `${percentage}%` }} />
@@ -242,16 +242,16 @@ const DashboardPerformanceSection = ({ data, t }: DashboardPerformanceSectionPro
               ) : (
                 <div className="space-y-3">
                   {data.agents.slice(0, 5).map(agent => (
-                    <div key={agent.id} className="flex items-center justify-between p-3 rounded-md border bg-muted/20">
-                      <div>
-                        <div className="font-semibold">{agent.name}</div>
+                    <div key={agent.id} className="flex items-center justify-between gap-3 p-3 rounded-md border bg-muted/20">
+                      <div className="min-w-0 flex-1">
+                        <div className="font-semibold truncate">{agent.name}</div>
                         <div className="text-sm text-muted-foreground">
                           {agent.conversations} {t('dashboard.agents.conversations')} ({agent.percentage}%)
                         </div>
                       </div>
-                      <div className="text-right min-w-[120px]">
+                      <div className="text-right min-w-[100px] sm:min-w-[120px] shrink-0">
                         <Badge variant="secondary" className="mb-1">{agent.availability_status}</Badge>
-                        <div className="text-sm text-muted-foreground">1ª resp: {formatSeconds(agent.avg_first_response_time_seconds)}</div>
+                        <div className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">1ª resp: {formatSeconds(agent.avg_first_response_time_seconds)}</div>
                       </div>
                     </div>
                   ))}
@@ -281,15 +281,15 @@ const DashboardPerformanceSection = ({ data, t }: DashboardPerformanceSectionPro
               ) : (
                 <div className="space-y-3">
                   {data.ai_agents.slice(0, 5).map(agent => (
-                    <div key={agent.id} className="flex items-center justify-between p-3 rounded-md border bg-muted/20">
-                      <div>
-                        <div className="font-semibold">{agent.name}</div>
+                    <div key={agent.id} className="flex items-center justify-between gap-3 p-3 rounded-md border bg-muted/20">
+                      <div className="min-w-0 flex-1">
+                        <div className="font-semibold truncate">{agent.name}</div>
                         <div className="text-sm text-muted-foreground">
                           {agent.messages} {tx('dashboard.agents.aiMessages', 'mensagens IA')} ({agent.percentage}%)
                         </div>
                       </div>
-                      <div className="text-right min-w-[120px]">
-                        <div className="text-sm text-muted-foreground">
+                      <div className="text-right min-w-[100px] sm:min-w-[120px] shrink-0">
+                        <div className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
                           {agent.conversations} {t('dashboard.agents.conversations')}
                         </div>
                       </div>

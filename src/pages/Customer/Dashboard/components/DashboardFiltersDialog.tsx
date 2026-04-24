@@ -125,6 +125,34 @@ const DashboardFiltersDialog = ({
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="dashboard-contact-type-filter">
+              {t('dashboard.filters.contactType') || 'Tipo de contato'}
+            </Label>
+            <Select
+              value={draftFilters.contactType || allValue}
+              onValueChange={value => onFiltersChange({ contactType: value === allValue ? '' : value })}
+            >
+              <SelectTrigger id="dashboard-contact-type-filter">
+                <SelectValue placeholder={t('dashboard.filters.allContactTypes') || 'Todos'} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={allValue}>
+                  {t('dashboard.filters.allContactTypes') || 'Todos'}
+                </SelectItem>
+                <SelectItem value="customer">
+                  {t('dashboard.filters.contactTypes.customer') || 'Clientes convertidos'}
+                </SelectItem>
+                <SelectItem value="lead">
+                  {t('dashboard.filters.contactTypes.lead') || 'Leads'}
+                </SelectItem>
+                <SelectItem value="visitor">
+                  {t('dashboard.filters.contactTypes.visitor') || 'Visitantes'}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="dashboard-since-filter">{t('dashboard.filters.since') || 'De'}</Label>
             <Input
               id="dashboard-since-filter"

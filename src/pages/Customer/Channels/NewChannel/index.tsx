@@ -57,8 +57,8 @@ export default function NewChannel() {
     goBack,
     hasEvolutionConfig,
     hasEvolutionGoConfig,
+    hasUazapiConfig,
     canFB,
-    canWpCloud,
     config,
   } = useChannelForm();
 
@@ -114,10 +114,6 @@ export default function NewChannel() {
   };
 
   const handleProviderSelectWithValidation = (provider: ProviderType) => {
-    // WhatsApp Cloud uses integrated component
-    if (selectedChannel?.type === 'whatsapp' && provider.id === 'whatsapp_cloud') {
-      if (!canWpCloud) return toast.error(t('newChannel.messages.whatsappCloudConfigMissing'));
-    }
     handleProviderSelect(provider);
   };
 
@@ -127,6 +123,7 @@ export default function NewChannel() {
     await testConnection(selectedChannel, selectedProvider, form, {
       hasEvolutionConfig,
       hasEvolutionGoConfig,
+      hasUazapiConfig,
     });
   };
 
@@ -136,6 +133,7 @@ export default function NewChannel() {
     await submitCreate(selectedChannel, selectedProvider, form, {
       hasEvolutionConfig,
       hasEvolutionGoConfig,
+      hasUazapiConfig,
       ...config,
     });
   };
@@ -270,6 +268,7 @@ export default function NewChannel() {
             onFormChange={(key, value) => updateForm({ [key]: value })}
             hasEvolutionConfig={hasEvolutionConfig}
             hasEvolutionGoConfig={hasEvolutionGoConfig}
+            hasUazapiConfig={hasUazapiConfig}
             canFB={canFB}
             onWhatsappCloudSuccess={data => {
               const createdId = data?.id ?? data?.payload?.id;
@@ -349,7 +348,6 @@ export default function NewChannel() {
               channelType={selectedChannel?.type || 'whatsapp'}
               providers={selectedChannel?.providers || []}
               isDisabled={providerId => {
-                if (providerId === 'whatsapp_cloud') return !canWpCloud;
                 if (selectedChannel?.type === 'email') {
                   if (providerId === 'google')
                     return !(
@@ -360,12 +358,7 @@ export default function NewChannel() {
                 }
                 return false;
               }}
-              disabledTooltip={providerId => {
-                if (providerId === 'whatsapp_cloud' && !canWpCloud) {
-                  return t('newChannel.channelGrid.notConfiguredTooltip');
-                }
-                return undefined;
-              }}
+              disabledTooltip={() => undefined}
               onProviderSelect={handleProviderSelectWithValidation}
               onBack={handleGoBack}
               onChannelListClick={() => navigate('/channels')}

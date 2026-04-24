@@ -30,8 +30,10 @@ import {
   CheckCircle,
   Smartphone,
   QrCode,
+  Pencil,
 } from 'lucide-react';
 import { EvolutionApiService, ZapiService } from '@/services/channels/channelConfigurationService';
+import UazapiService from '@/services/channels/uazapiService';
 import InboxesService from '@/services/channels/inboxesService';
 
 interface ConfigurationFormProps {
@@ -127,9 +129,116 @@ const WhatsAppChannelConfig: React.FC<{
   const [isUpdating, setIsUpdating] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
 
+  const isWhatsappCloud = inbox.provider === 'whatsapp_cloud';
+  const [isEditingCreds, setIsEditingCreds] = useState(false);
+  const [isSavingCreds, setIsSavingCreds] = useState(false);
+
+  // Phone number can arrive either top-level (serializer virtual field) or
+  // nested under `channel` / `channel.phone_number` depending on endpoint.
+  // Read every known shape so the card is never blank when the data exists.
+  const inboxPhone =
+    inbox.phone_number ||
+    (inbox as { channel?: { phone_number?: string } }).channel?.phone_number ||
+    '';
+
+  const [credsDraft, setCredsDraft] = useState({
+    phone_number: inboxPhone,
+    phone_number_id: inbox.provider_config?.phone_number_id || '',
+    waba_id: inbox.provider_config?.waba_id || inbox.provider_config?.business_account_id || '',
+    webhook_verify_token: inbox.provider_config?.webhook_verify_token || '',
+  });
+
   useEffect(() => {
     setMarkAsRead(inbox.provider_config?.mark_as_read ?? true);
+    setCredsDraft({
+      phone_number: inboxPhone,
+      phone_number_id: inbox.provider_config?.phone_number_id || '',
+      waba_id: inbox.provider_config?.waba_id || inbox.provider_config?.business_account_id || '',
+      webhook_verify_token: inbox.provider_config?.webhook_verify_token || '',
+    });
+    setIsEditingCreds(false);
+    // inboxPhone is derived from inbox, so inbox as dep is enough.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inbox]);
+
+  const generateVerifyToken = (): string => {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID().replace(/-/g, '');
+    }
+    return Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+  };
+
+  const getWebhookBase = (): string => {
+    if (typeof window === 'undefined') return '';
+    const explicit = (import.meta as any)?.env?.VITE_API_URL;
+    if (typeof explicit === 'string' && explicit) return explicit.replace(/\/$/, '');
+    const { protocol, hostname } = window.location;
+    const apiHost = hostname.startsWith('crm.') ? hostname.replace(/^crm\./, 'api.') : hostname;
+    return `${protocol}//${apiHost}`;
+  };
+
+  const webhookPhoneRaw: string =
+    credsDraft.phone_number ||
+    inbox.phone_number ||
+    inbox.channel?.phone_number ||
+    credsDraft.phone_number_id ||
+    inbox.provider_config?.phone_number_id ||
+    '';
+  const webhookPhoneDigits = String(webhookPhoneRaw).replace(/\D/g, '');
+  const webhookBase = getWebhookBase();
+  const webhookCallbackUrl = webhookPhoneDigits
+    ? `${webhookBase}/webhooks/whatsapp/${webhookPhoneDigits}`
+    : webhookBase
+    ? `${webhookBase}/webhooks/whatsapp/`
+    : '';
+
+  const copyToClipboard = (value: string, label: string) => {
+    if (!value) return;
+    navigator.clipboard
+      .writeText(value)
+      .then(() => toast.success(`${label} copiado`))
+      .catch(() => toast.error('Falha ao copiar'));
+  };
+
+  const handleSaveCreds = async () => {
+    if (!credsDraft.phone_number_id || !credsDraft.waba_id) {
+      toast.error(t('settings.configuration.whatsapp.cloudCredentials.errors.missingFields'));
+      return;
+    }
+    setIsSavingCreds(true);
+    try {
+      await onUpdate({
+        phone_number: credsDraft.phone_number,
+        channel: {
+          phone_number: credsDraft.phone_number,
+          provider_config: {
+            ...inbox.provider_config,
+            phone_number_id: credsDraft.phone_number_id,
+            waba_id: credsDraft.waba_id,
+            business_account_id: credsDraft.waba_id,
+            webhook_verify_token: credsDraft.webhook_verify_token,
+          },
+        },
+      });
+      toast.success(t('settings.configuration.whatsapp.cloudCredentials.success.saved'));
+      setIsEditingCreds(false);
+    } catch (error) {
+      console.error('Erro ao salvar credenciais:', error);
+      toast.error(t('settings.configuration.whatsapp.cloudCredentials.errors.saveError'));
+    } finally {
+      setIsSavingCreds(false);
+    }
+  };
+
+  const handleCancelCreds = () => {
+    setCredsDraft({
+      phone_number: inbox.phone_number || '',
+      phone_number_id: inbox.provider_config?.phone_number_id || '',
+      waba_id: inbox.provider_config?.waba_id || inbox.provider_config?.business_account_id || '',
+      webhook_verify_token: inbox.provider_config?.webhook_verify_token || '',
+    });
+    setIsEditingCreds(false);
+  };
 
   const handleUpdateMarkAsRead = async (enabled: boolean) => {
     setMarkAsRead(enabled);
@@ -177,7 +286,7 @@ const WhatsAppChannelConfig: React.FC<{
                 </p>
 
                 <div className="flex items-center gap-2 mt-4">
-                  <div className="flex-1 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg font-mono text-sm">
+                  <div className="flex-1 min-w-0 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg font-mono text-sm break-all">
                     {showApiKey
                       ? inbox.provider_config.api_key
                       : '••••••••••••••••••••••••••••••••'}
@@ -191,6 +300,179 @@ const WhatsAppChannelConfig: React.FC<{
                     <Copy className="w-4 h-4" />
                   </Button>
                 </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Edit WhatsApp Cloud Credentials */}
+      {isWhatsappCloud && (
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-start gap-4">
+              <Settings className="w-5 h-5 text-blue-600 mt-1" />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="font-semibold text-slate-900 dark:text-slate-100">
+                      {t('settings.configuration.whatsapp.cloudCredentials.title')}
+                    </h3>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                      {t('settings.configuration.whatsapp.cloudCredentials.description')}
+                    </p>
+                  </div>
+                  {!isEditingCreds && (
+                    <Button variant="outline" size="sm" onClick={() => setIsEditingCreds(true)}>
+                      <Pencil className="w-4 h-4 mr-2" />
+                      {t('settings.configuration.whatsapp.cloudCredentials.editButton')}
+                    </Button>
+                  )}
+                </div>
+
+                <div className="grid gap-4 mt-4">
+                  <div>
+                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300 block mb-1">
+                      {t('settings.configuration.whatsapp.cloudCredentials.fields.phoneNumber')}
+                    </label>
+                    <Input
+                      value={credsDraft.phone_number}
+                      onChange={e =>
+                        setCredsDraft(d => ({ ...d, phone_number: e.target.value }))
+                      }
+                      disabled={!isEditingCreds || isSavingCreds}
+                      placeholder="+5511999999999"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300 block mb-1">
+                      {t('settings.configuration.whatsapp.cloudCredentials.fields.phoneNumberId')}
+                    </label>
+                    <Input
+                      value={credsDraft.phone_number_id}
+                      onChange={e =>
+                        setCredsDraft(d => ({ ...d, phone_number_id: e.target.value }))
+                      }
+                      disabled={!isEditingCreds || isSavingCreds}
+                      placeholder="123456789012345"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300 block mb-1">
+                      {t('settings.configuration.whatsapp.cloudCredentials.fields.wabaId')}
+                    </label>
+                    <Input
+                      value={credsDraft.waba_id}
+                      onChange={e => setCredsDraft(d => ({ ...d, waba_id: e.target.value }))}
+                      disabled={!isEditingCreds || isSavingCreds}
+                      placeholder="987654321098765"
+                    />
+                  </div>
+
+                </div>
+
+                <div className="rounded-lg border border-amber-300/30 bg-amber-50/10 dark:bg-amber-950/10 p-4 space-y-3 mt-4">
+                  <div>
+                    <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                      {t('settings.configuration.whatsapp.cloudCredentials.webhook.title')}
+                    </h4>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                      {t('settings.configuration.whatsapp.cloudCredentials.webhook.description')}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-medium text-slate-700 dark:text-slate-300 block mb-1">
+                      {t('settings.configuration.whatsapp.cloudCredentials.webhook.callbackUrl')}
+                    </label>
+                    <div className="flex gap-2">
+                      <Input
+                        readOnly
+                        value={
+                          webhookCallbackUrl ||
+                          t('settings.configuration.whatsapp.cloudCredentials.webhook.urlUnavailable')
+                        }
+                        className="flex-1 min-w-0 font-mono text-xs"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          copyToClipboard(webhookCallbackUrl, 'Callback URL')
+                        }
+                        disabled={!webhookCallbackUrl}
+                      >
+                        <Copy className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-medium text-slate-700 dark:text-slate-300 block mb-1">
+                      {t('settings.configuration.whatsapp.cloudCredentials.webhook.verifyToken')}
+                    </label>
+                    <div className="flex gap-2">
+                      <Input
+                        readOnly={!isEditingCreds}
+                        value={credsDraft.webhook_verify_token}
+                        onChange={e =>
+                          setCredsDraft(d => ({ ...d, webhook_verify_token: e.target.value }))
+                        }
+                        disabled={isSavingCreds}
+                        className="flex-1 min-w-0 font-mono text-xs"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          copyToClipboard(credsDraft.webhook_verify_token, 'Verify Token')
+                        }
+                        disabled={!credsDraft.webhook_verify_token}
+                      >
+                        <Copy className="w-4 h-4" />
+                      </Button>
+                      {isEditingCreds && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setCredsDraft(d => ({
+                              ...d,
+                              webhook_verify_token: generateVerifyToken(),
+                            }));
+                            toast.success(
+                              t('settings.configuration.whatsapp.cloudCredentials.webhook.regenerated'),
+                            );
+                          }}
+                          title={t(
+                            'settings.configuration.whatsapp.cloudCredentials.webhook.regenerate',
+                          )}
+                          disabled={isSavingCreds}
+                        >
+                          ↻
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {isEditingCreds && (
+                  <div className="flex justify-end gap-2 mt-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCancelCreds}
+                      disabled={isSavingCreds}
+                    >
+                      {t('settings.configuration.whatsapp.cloudCredentials.cancelButton')}
+                    </Button>
+                    <Button size="sm" onClick={handleSaveCreds} loading={isSavingCreds}>
+                      {t('settings.configuration.whatsapp.cloudCredentials.saveButton')}
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>
@@ -1496,7 +1778,11 @@ const ZapiWhatsAppConfig: React.FC<{
     callRejectMessage: 'Não aceito chamadas',
   });
 
-  const instanceId = inbox.provider_config?.instance_id;
+  const isUazapi = inbox.provider === 'uazapi';
+  // UAZAPI channels store only instance_name in provider_config; the backend's
+  // /uazapi/{qrcodes,instances,settings}/:id routes accept that as the ref.
+  const instanceId = inbox.provider_config?.instance_id
+    || (isUazapi ? inbox.provider_config?.instance_name : undefined);
   const inboxId = inbox.id;
 
   // Ref to track last known status to detect changes
@@ -1518,7 +1804,7 @@ const ZapiWhatsAppConfig: React.FC<{
 
   // Load instance data on mount
   useEffect(() => {
-    if (!instanceId) return;
+    if (!instanceId || isUazapi) return;
 
     const loadInstanceData = async () => {
       try {
@@ -1613,7 +1899,7 @@ const ZapiWhatsAppConfig: React.FC<{
 
   // Poll instance status while QR modal is open
   useEffect(() => {
-    if (!showQrModal || !instanceId) return;
+    if (!showQrModal || !instanceId || isUazapi) return;
 
     const interval = setInterval(async () => {
       try {
@@ -1681,7 +1967,7 @@ const ZapiWhatsAppConfig: React.FC<{
 
   // Poll instance status and data periodically to keep UI updated
   useEffect(() => {
-    if (!instanceId) return;
+    if (!instanceId || isUazapi) return;
 
     let shouldContinue = true;
 
@@ -1783,7 +2069,9 @@ const ZapiWhatsAppConfig: React.FC<{
 
     try {
       setIsLoading(true);
-      const response = await ZapiService.getQRCode(instanceId);
+      const response = isUazapi
+        ? await UazapiService.getQRCode(instanceId)
+        : await ZapiService.getQRCode(instanceId);
       // Backend returns { base64: "...", code: null, connected: false }
       const qrData =
         response?.base64 ||
@@ -1811,7 +2099,9 @@ const ZapiWhatsAppConfig: React.FC<{
 
     try {
       setIsLoading(true);
-      const response = await ZapiService.refreshQRCode(instanceId);
+      const response = isUazapi
+        ? await UazapiService.getQRCode(instanceId)
+        : await ZapiService.refreshQRCode(instanceId);
       // Backend returns { base64: "...", code: null, connected: false } or { success: true, qrcode: {...} }
       const qrData =
         response?.base64 ||
@@ -1930,7 +2220,11 @@ const ZapiWhatsAppConfig: React.FC<{
 
     try {
       setIsLoading(true);
-      await ZapiService.disconnectInstance(instanceId);
+      if (isUazapi) {
+        await UazapiService.logout(instanceId);
+      } else {
+        await ZapiService.disconnectInstance(instanceId);
+      }
       toast.success('Instância desconectada com sucesso!');
       setInstanceStatus('disconnected');
     } catch (error: any) {
@@ -2452,6 +2746,7 @@ const ConfigurationForm: React.FC<ConfigurationFormProps> = ({ inbox, onUpdate }
   const isWhatsAppChannel = channelType === 'Channel::Whatsapp';
   const isEvolutionChannel = inbox.provider === 'evolution';
   const isEvolutionGoChannel = inbox.provider === 'evolution_go';
+  const isUazapiChannel = inbox.provider === 'uazapi';
   const isZapiChannel = inbox.provider === 'zapi';
   const isEmailChannel = channelType === 'Channel::Email';
   const isTwilioChannel = channelType === 'Channel::TwilioSms';
@@ -2477,6 +2772,11 @@ const ConfigurationForm: React.FC<ConfigurationFormProps> = ({ inbox, onUpdate }
 
   // WhatsApp Evolution Go
   if (isWhatsAppChannel && isEvolutionGoChannel) {
+    return <EvolutionWhatsAppConfig inbox={inbox} onUpdate={handleUpdate} />;
+  }
+
+  // WhatsApp UAZAPI — reusa a tela do Evolution (QR + status polling)
+  if (isWhatsAppChannel && isUazapiChannel) {
     return <EvolutionWhatsAppConfig inbox={inbox} onUpdate={handleUpdate} />;
   }
 

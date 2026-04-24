@@ -68,8 +68,8 @@
     "collapse": "Recolher barra lateral",
     "closeSubmenu": "Fechar submenu",
     "footer": {
-      "brand": "Evo CRM",
-      "copyright": "© {{year}} Evolution Foundation. All rights reserved.",
+      "brand": "CRM de Atendimento",
+      "copyright": "© {{year}} Oramatecnologias Foundation. All rights reserved.",
       "documentation": "Documentação",
       "support": "Preciso de suporte"
     }
@@ -79,9 +79,10 @@
       "dashboard": "Dashboard",
       "conversations": "Conversas",
       "contacts": "Contatos",
-      "pipelines": "Pipelines",
+      "pipelines": "Kanban",
       "agents": "Agentes de IA",
       "channels": "Canais",
+      "followUps": "Follow-ups",
       "tutorials": "Tutoriais",
       "settings": "Configurações"
     },

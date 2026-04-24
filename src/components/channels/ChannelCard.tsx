@@ -1,5 +1,5 @@
 import { Button, Card, CardContent } from '@evoapi/design-system';
-import { Settings, Trash2 } from 'lucide-react';
+import { Settings, Trash2, Phone } from 'lucide-react';
 import { Inbox } from '@/types/channels/inbox';
 import ChannelIcon from './ChannelIcon';
 import { getChannelDisplayName } from '@/utils/channelUtils';
@@ -35,6 +35,14 @@ export default function ChannelCard({ inbox, isDeleting, onSettings, onDelete }:
             <p className="text-xs text-sidebar-foreground/60 truncate">
               {inbox.channel_type ? getChannelDisplayName(inbox.channel_type, inbox.provider) : '—'}
             </p>
+            {inbox.phone_number && (
+              <div className="mt-1 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700">
+                <Phone className="w-3 h-3 text-green-700 dark:text-green-400" />
+                <span className="text-xs font-mono font-semibold text-green-800 dark:text-green-300">
+                  {inbox.phone_number}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -44,6 +52,12 @@ export default function ChannelCard({ inbox, isDeleting, onSettings, onDelete }:
             <div className="flex items-center justify-between">
               <span>{t('card.displayName')}</span>
               <span className="font-medium text-sidebar-foreground">{inbox.display_name}</span>
+            </div>
+          )}
+          {inbox.phone_number && (
+            <div className="flex items-center justify-between">
+              <span>{t('card.phoneNumber')}</span>
+              <span className="font-mono text-sidebar-foreground">{inbox.phone_number}</span>
             </div>
           )}
           <div className="flex items-center justify-between">

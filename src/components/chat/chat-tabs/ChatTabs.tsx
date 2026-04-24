@@ -25,12 +25,12 @@ const ChatTabs = ({ dashboardApps, activeTab, onTabChange, conversationSelected 
   }
 
   return (
-    <div className="flex items-center gap-1 px-4 py-2 border-b bg-background">
+    <div className="flex items-center gap-1 px-2 md:px-4 py-2 border-b bg-background overflow-x-auto scrollbar-thin">
       {/* Chat Tab */}
       <button
         onClick={() => onTabChange('chat')}
         className={`
-          flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer
+          flex items-center gap-2 px-3 md:px-4 py-2 min-h-[40px] rounded-lg text-sm font-medium transition-colors cursor-pointer flex-shrink-0
           ${
             activeTab === 'chat'
               ? 'bg-primary text-primary-foreground'
@@ -48,7 +48,7 @@ const ChatTabs = ({ dashboardApps, activeTab, onTabChange, conversationSelected 
           key={app.id}
           onClick={() => onTabChange(app.id)}
           className={`
-            flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer
+            flex items-center gap-2 px-3 md:px-4 py-2 min-h-[40px] rounded-lg text-sm font-medium transition-colors cursor-pointer flex-shrink-0 whitespace-nowrap
             ${
               activeTab === app.id
                 ? 'bg-primary text-primary-foreground'

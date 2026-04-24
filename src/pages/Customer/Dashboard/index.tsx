@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
-import { Badge, Card, CardContent } from '@evoapi/design-system';
+import { Badge, Card, CardContent, Tabs, TabsContent, TabsList, TabsTrigger } from '@evoapi/design-system';
 import { BaseHeader } from '@/components/base';
 import type { HeaderFilter } from '@/components/base';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -14,6 +14,10 @@ import DashboardFiltersDialog from './components/DashboardFiltersDialog';
 import DashboardMetricsSection from './components/DashboardMetricsSection';
 import DashboardTrendsSection from './components/DashboardTrendsSection';
 import DashboardPerformanceSection from './components/DashboardPerformanceSection';
+import DashboardContactsByLocationCard from './components/DashboardContactsByLocationCard';
+import TrackingTab from './components/TrackingTab';
+import MetaTokenExpiryBanner from './components/MetaTokenExpiryBanner';
+import UtmBuilderTab from './components/UtmBuilderTab';
 import type { DashboardFilterState, DashboardOption } from './components/types';
 import { DashboardTour } from '@/tours';
 
@@ -36,6 +40,7 @@ const getDefaultFilterState = (): DashboardFilterState => {
     teamId: ALL_FILTER_VALUE,
     inboxId: ALL_FILTER_VALUE,
     userId: ALL_FILTER_VALUE,
+    contactType: '',
     since: toDateInputValue(sinceDate),
     until: toDateInputValue(untilDate),
   };
@@ -67,6 +72,7 @@ const buildDashboardParams = (filters: DashboardFilterState): CustomerDashboardP
   if (filters.teamId && filters.teamId !== ALL_FILTER_VALUE) params.team_id = filters.teamId;
   if (filters.inboxId && filters.inboxId !== ALL_FILTER_VALUE) params.inbox_id = filters.inboxId;
   if (filters.userId && filters.userId !== ALL_FILTER_VALUE) params.user_id = filters.userId;
+  if (filters.contactType) params.contact_type = filters.contactType;
 
   const since = parseDateToUnix(filters.since, false);
   const until = parseDateToUnix(filters.until, true);
@@ -270,7 +276,7 @@ const CustomerDashboardPage = () => {
   }
 
   return (
-    <div className="h-full flex flex-col p-4 gap-6">
+    <div className="h-full flex flex-col p-3 md:p-4 gap-4 md:gap-6">
       <DashboardTour />
       <div data-tour="dashboard-header">
         <BaseHeader
@@ -283,21 +289,52 @@ const CustomerDashboardPage = () => {
         />
       </div>
 
-      <div className="-mt-3 flex justify-end" data-tour="dashboard-period-badge">
+      <div className="-mt-3 flex justify-start md:justify-end" data-tour="dashboard-period-badge">
         <Badge variant="secondary">
           {currentPeriodLabel} ({data.period.days} dias)
         </Badge>
       </div>
 
-      <div data-tour="dashboard-metrics">
-        <DashboardMetricsSection data={data} t={t} />
-      </div>
-      <div data-tour="dashboard-trends">
-        <DashboardTrendsSection data={data} t={t} channelShareData={channelShareData} />
-      </div>
-      <div data-tour="dashboard-performance">
-        <DashboardPerformanceSection data={data} t={t} />
-      </div>
+      <MetaTokenExpiryBanner />
+
+      <Tabs defaultValue="overview" className="w-full">
+        {/* Mobile: tabs scrolláveis em pills compactas; Desktop: grid */}
+        <div className="md:hidden -mx-3 px-3 overflow-x-auto scrollbar-hidden">
+          <TabsList className="inline-flex w-auto h-10">
+            <TabsTrigger value="overview" className="text-sm whitespace-nowrap">Visão geral</TabsTrigger>
+            <TabsTrigger value="tracking" className="text-sm whitespace-nowrap">Rastreamento</TabsTrigger>
+            <TabsTrigger value="utm" className="text-sm whitespace-nowrap">UTM</TabsTrigger>
+          </TabsList>
+        </div>
+        <TabsList className="hidden md:grid w-full grid-cols-3 max-w-2xl">
+          <TabsTrigger value="overview">Visão geral</TabsTrigger>
+          <TabsTrigger value="tracking">Rastreamento de dados</TabsTrigger>
+          <TabsTrigger value="utm">Criador de UTM</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-6 mt-4">
+          <div data-tour="dashboard-metrics">
+            <DashboardMetricsSection data={data} t={t} />
+          </div>
+          <div data-tour="dashboard-trends">
+            <DashboardTrendsSection data={data} t={t} channelShareData={channelShareData} />
+          </div>
+          <div data-tour="dashboard-performance">
+            <DashboardPerformanceSection data={data} t={t} />
+          </div>
+          <div data-tour="dashboard-location">
+            <DashboardContactsByLocationCard />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="tracking" className="mt-4">
+          <TrackingTab />
+        </TabsContent>
+
+        <TabsContent value="utm" className="mt-4">
+          <UtmBuilderTab />
+        </TabsContent>
+      </Tabs>
 
       <DashboardFiltersDialog
         open={filterModalOpen}

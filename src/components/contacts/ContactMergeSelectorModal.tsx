@@ -130,7 +130,7 @@ export default function ContactMergeSelectorModal({
                   onClick={() => handleSelectContact(contact)}
                 >
                   <Avatar className="h-12 w-12 shrink-0">
-                    <AvatarImage src={contact.avatar_url || contact.thumbnail} />
+                    <AvatarImage src={contact.avatar_url || contact.thumbnail || undefined} />
                     <AvatarFallback className="bg-primary/10 text-primary">
                       {getInitials(contact.name)}
                     </AvatarFallback>

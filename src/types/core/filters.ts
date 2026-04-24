@@ -342,7 +342,10 @@ export const CONVERSATION_FILTER_TYPES: FilterType[] = [
     attributeI18nKey: 'conversationsFilter.attributes.status',
     inputType: 'search_select',
     dataType: 'text',
-    filterOperators: [{ key: 'equal_to', label: 'conversationsFilter.operators.equal_to', value: 'equal_to' }],
+    filterOperators: [
+      { key: 'equal_to', label: 'conversationsFilter.operators.equal_to', value: 'equal_to' },
+      { key: 'not_equal_to', label: 'conversationsFilter.operators.not_equal_to', value: 'not_equal_to' },
+    ],
     attribute_type: 'standard',
     options: [
       { label: 'conversationsFilter.options.status.all', value: 'all' },
@@ -357,7 +360,10 @@ export const CONVERSATION_FILTER_TYPES: FilterType[] = [
     attributeI18nKey: 'conversationsFilter.attributes.assignee_type',
     inputType: 'search_select',
     dataType: 'text',
-    filterOperators: [{ key: 'equal_to', label: 'conversationsFilter.operators.equal_to', value: 'equal_to' }],
+    filterOperators: [
+      { key: 'equal_to', label: 'conversationsFilter.operators.equal_to', value: 'equal_to' },
+      { key: 'not_equal_to', label: 'conversationsFilter.operators.not_equal_to', value: 'not_equal_to' },
+    ],
     attribute_type: 'standard',
     options: [
       { label: 'conversationsFilter.options.assignee_type.me', value: 'me' },
@@ -371,7 +377,10 @@ export const CONVERSATION_FILTER_TYPES: FilterType[] = [
     attributeI18nKey: 'conversationsFilter.attributes.inbox_id',
     inputType: 'search_select',
     dataType: 'text',
-    filterOperators: [{ key: 'equal_to', label: 'conversationsFilter.operators.equal_to', value: 'equal_to' }],
+    filterOperators: [
+      { key: 'equal_to', label: 'conversationsFilter.operators.equal_to', value: 'equal_to' },
+      { key: 'not_equal_to', label: 'conversationsFilter.operators.not_equal_to', value: 'not_equal_to' },
+    ],
     attribute_type: 'standard',
     options: [], // Will be populated dynamically
   },
@@ -380,7 +389,10 @@ export const CONVERSATION_FILTER_TYPES: FilterType[] = [
     attributeI18nKey: 'conversationsFilter.attributes.channel_type',
     inputType: 'search_select',
     dataType: 'text',
-    filterOperators: [{ key: 'equal_to', label: 'conversationsFilter.operators.equal_to', value: 'equal_to' }],
+    filterOperators: [
+      { key: 'equal_to', label: 'conversationsFilter.operators.equal_to', value: 'equal_to' },
+      { key: 'not_equal_to', label: 'conversationsFilter.operators.not_equal_to', value: 'not_equal_to' },
+    ],
     attribute_type: 'standard',
     options: [
       { label: 'conversationsFilter.options.channel_type.whatsapp', value: 'Channel::Whatsapp' },
@@ -401,7 +413,10 @@ export const CONVERSATION_FILTER_TYPES: FilterType[] = [
     attributeI18nKey: 'conversationsFilter.attributes.team_id',
     inputType: 'search_select',
     dataType: 'text',
-    filterOperators: [{ key: 'equal_to', label: 'conversationsFilter.operators.equal_to', value: 'equal_to' }],
+    filterOperators: [
+      { key: 'equal_to', label: 'conversationsFilter.operators.equal_to', value: 'equal_to' },
+      { key: 'not_equal_to', label: 'conversationsFilter.operators.not_equal_to', value: 'not_equal_to' },
+    ],
     attribute_type: 'standard',
     options: [], // Will be populated dynamically
   },

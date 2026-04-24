@@ -139,7 +139,7 @@ export default function BaseFilterRow<T extends BaseFilter>({
 
   return (
     <div
-      className={`flex items-center gap-3 p-4 rounded-lg bg-sidebar-accent/30 border border-sidebar-border min-w-0 overflow-hidden ${className}`}
+      className={`relative flex flex-col md:flex-row md:items-center gap-2 md:gap-3 p-3 md:p-4 rounded-lg bg-sidebar-accent/30 border border-sidebar-border min-w-0 overflow-hidden ${className}`}
     >
       {/* Query Operator */}
       {showQueryOperator && (
@@ -150,7 +150,7 @@ export default function BaseFilterRow<T extends BaseFilter>({
               onUpdate(index, 'queryOperator' as keyof T, value)
             }
           >
-            <SelectTrigger className="w-20 bg-sidebar border-sidebar-border text-sidebar-foreground">
+            <SelectTrigger className="w-full md:w-20 h-11 md:h-9 bg-sidebar border-sidebar-border text-sidebar-foreground">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="bg-sidebar border-sidebar-border">
@@ -171,7 +171,7 @@ export default function BaseFilterRow<T extends BaseFilter>({
           value={filter.attributeKey}
           onValueChange={value => onUpdate(index, 'attributeKey' as keyof T, value)}
         >
-          <SelectTrigger className="w-full bg-sidebar border-sidebar-border text-sidebar-foreground">
+          <SelectTrigger className="w-full h-11 md:h-9 bg-sidebar border-sidebar-border text-sidebar-foreground">
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="bg-sidebar border-sidebar-border">
@@ -194,7 +194,7 @@ export default function BaseFilterRow<T extends BaseFilter>({
           value={filter.filterOperator}
           onValueChange={value => onUpdate(index, 'filterOperator' as keyof T, value)}
         >
-          <SelectTrigger className="w-full bg-sidebar border-sidebar-border text-sidebar-foreground">
+          <SelectTrigger className="w-full h-11 md:h-9 bg-sidebar border-sidebar-border text-sidebar-foreground">
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="bg-sidebar border-sidebar-border">
@@ -214,12 +214,13 @@ export default function BaseFilterRow<T extends BaseFilter>({
       {/* Value */}
       <div className="flex-1 min-w-0">{renderValueInput()}</div>
 
-      {/* Remove Button */}
+      {/* Remove Button — flutuante no canto no mobile, inline no desktop */}
       <Button
         variant="ghost"
         size="sm"
         onClick={() => onRemove(index)}
-        className="flex-shrink-0 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+        className="absolute md:static top-1 right-1 h-9 w-9 md:h-9 md:w-auto p-0 md:px-3 flex-shrink-0 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+        aria-label="Remover filtro"
       >
         <X className="h-4 w-4" />
       </Button>

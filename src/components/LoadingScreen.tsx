@@ -1,7 +1,7 @@
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 
-import logo from '@/assets/EVO_CRM.png';
+import AppLogo from '@/components/AppLogo';
 
 interface LoadingScreenProps {
   fullScreen?: boolean;
@@ -10,8 +10,6 @@ interface LoadingScreenProps {
 }
 
 const LoadingScreen = ({ fullScreen = false, showLogo = false, className }: LoadingScreenProps) => {
-  const displayLogo = logo;
-
   return (
     <div
       className={cn(
@@ -20,16 +18,7 @@ const LoadingScreen = ({ fullScreen = false, showLogo = false, className }: Load
         className,
       )}
     >
-      {showLogo && (
-        <img
-            src={displayLogo}
-            alt="EVO CRM"
-            className="w-1/4 mb-4"
-            onError={e => {
-              (e.target as HTMLImageElement).src = logo;
-            }}
-          />
-      )}
+      {showLogo && <AppLogo className="h-16 mb-4" />}
       <Loader2
         className={cn(
           'h-8 w-8 animate-spin text-primary-interaction-default dark:text-primary-surface-default'

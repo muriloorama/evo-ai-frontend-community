@@ -3,6 +3,7 @@ export interface CustomerDashboardParams {
   team_id?: string;
   inbox_id?: string;
   user_id?: string;
+  contact_type?: string;
   since?: number;
   until?: number;
 }

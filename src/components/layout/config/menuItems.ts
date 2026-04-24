@@ -21,6 +21,9 @@ import {
   List,
   GraduationCap,
   Shield,
+  Repeat,
+  Megaphone,
+  Code2,
 } from 'lucide-react';
 
 export interface MenuItem {
@@ -101,6 +104,13 @@ export const getCustomerMenuItems = (t: (key: string) => string): MenuItem[] => 
     action: 'read',
   },
   {
+    name: 'Disparos',
+    href: '/broadcasts',
+    icon: Megaphone,
+    resource: 'conversations',
+    action: 'read',
+  },
+  {
     id: 'customer-agents',
     name: t('menu.customer.agents'),
     href: '/agents/list',
@@ -139,6 +149,11 @@ export const getCustomerMenuItems = (t: (key: string) => string): MenuItem[] => 
     action: 'read',
   },
   {
+    name: t('menu.customer.followUps'),
+    href: '/follow-ups',
+    icon: Repeat,
+  },
+  {
     name: t('menu.customer.tutorials'),
     href: '/tutorials',
     icon: GraduationCap,
@@ -165,7 +180,7 @@ export const getCustomerMenuItems = (t: (key: string) => string): MenuItem[] => 
       {
         name: t('menu.settings.teams'),
         href: '/settings/teams',
-        icon: Clock,
+        icon: Users2,
         resource: 'teams',
         action: 'read',
       },
@@ -182,6 +197,11 @@ export const getCustomerMenuItems = (t: (key: string) => string): MenuItem[] => 
         icon: Code,
         resource: 'custom_attribute_definitions',
         action: 'read',
+      },
+      {
+        name: 'API',
+        href: '/api-docs',
+        icon: Code2,
       },
       {
         name: t('menu.settings.cannedResponses'),

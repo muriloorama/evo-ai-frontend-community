@@ -23,10 +23,12 @@ import { useLanguage } from '../../../hooks/useLanguage';
 import NotificationBell from '../NotificationBell';
 import ProfileMenu from './ProfileMenu';
 import { TourFab } from '@/components/TourFab';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import MenuItem from './MenuItem';
 import { MenuItem as MenuItemType } from '../config/menuItems';
+import WorkspaceSwitcher from './WorkspaceSwitcher';
 
-import logo from '../../../assets/EVO_CRM.png';
+import AppLogo from '@/components/AppLogo';
 
 // Utility function for className merging
 function cn(...classes: (string | undefined | null | false)[]) {
@@ -73,8 +75,6 @@ export default function Header({
   const { t } = useLanguage('layout');
   const [expandedMobileMenus, setExpandedMobileMenus] = useState<Set<string>>(new Set());
 
-  const displayLogo = logo;
-
   return (
     <div className="flex-shrink-0 bg-sidebar border-b border-sidebar-border px-0 py-3 flex items-center shadow-sm">
       {/* Mobile Layout */}
@@ -96,6 +96,10 @@ export default function Header({
                   {t('sidebar.navigationMenu')}
                 </SheetTitle>
               </SheetHeader>
+
+              <div className="px-4 pt-3 pb-2 border-b border-sidebar-border">
+                <WorkspaceSwitcher isCollapsed={false} popoverSide="bottom" />
+              </div>
 
               <ScrollArea className="flex-1 min-h-0 overflow-hidden p-4">
                 <nav className="space-y-1">
@@ -195,20 +199,14 @@ export default function Header({
         {/* Center: Logo */}
         <div className="flex-1 flex justify-center">
           <div className="flex items-center gap-2">
-            <img
-              src={displayLogo}
-              onError={e => {
-                (e.target as HTMLImageElement).src = logo;
-              }}
-              alt="EVO CRM"
-              className="h-8 max-w-32"
-            />
+            <AppLogo className="h-8 max-w-32" />
           </div>
         </div>
 
         {/* Right: Notifications and User Menu */}
         <div className="flex-1 flex justify-end items-center gap-2">
           <TourFab />
+          <ThemeToggle />
           <NotificationBell />
           <ProfileMenu
             user={user}
@@ -229,14 +227,7 @@ export default function Header({
           {/* App Logo - only show when not collapsed */}
           {!isCollapsed && (
             <div className="flex-shrink-0 flex items-center gap-2">
-              <img
-                src={displayLogo}
-                alt="EVO CRM"
-                className="h-8 max-w-32"
-                onError={e => {
-                  (e.target as HTMLImageElement).src = logo;
-                }}
-              />
+              <AppLogo className="h-8 max-w-32" />
             </div>
           )}
 
@@ -270,6 +261,7 @@ export default function Header({
         {/* Right side */}
         <div className="flex items-center gap-2 px-4">
           <TourFab />
+          <ThemeToggle />
           {/* Notifications */}
           <NotificationBell />
           {/* User Menu */}

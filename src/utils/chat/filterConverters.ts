@@ -1,14 +1,20 @@
 import { ConversationFilter, ConversationListParams } from '@/types/chat/api';
 
 /**
- * Converte filtros do modal para o formato da API do CRM Chat (POST /conversations/filter)
+ * Converte filtros do modal para o formato da API do CRM Chat (POST /conversations/filter).
+ * O backend (Conversations::FilterService) lê de `params[:payload]`, não `filters`.
  */
-export const convertFiltersToApiFormat = (filters: ConversationFilter[]): { filters: any[] } => {
+export const convertFiltersToApiFormat = (filters: ConversationFilter[]): { payload: any[] } => {
   const filterArray: any[] = [];
 
+  const lastIndex = filters.length - 1;
   filters.forEach((filter, index) => {
-    const { attribute_key, filter_operator, values } = filter;
-    const query_operator = index === 0 ? null : 'AND'; // Primeiro filtro não tem operador, demais usam AND
+    const { attribute_key, filter_operator, values, query_operator } = filter;
+    // Convenção do backend (FilterService): query_operator vem DEPOIS da cláusula no SQL
+    // (`status = X AND priority = Y`), então é a conexão para o PRÓXIMO filtro.
+    // Último filtro não tem próximo → query_operator = null.
+    const resolvedQueryOperator =
+      index === lastIndex ? null : (query_operator || 'and').toString().toUpperCase();
 
     // Determinar se é custom attribute baseado no attribute_key
     const isCustomAttribute = [
@@ -24,7 +30,7 @@ export const convertFiltersToApiFormat = (filters: ConversationFilter[]): { filt
       attribute_key,
       filter_operator,
       values,
-      query_operator,
+      query_operator: resolvedQueryOperator,
     };
 
     // Adicionar custom_attribute_type se necessário
@@ -41,7 +47,7 @@ export const convertFiltersToApiFormat = (filters: ConversationFilter[]): { filt
     filterArray.push(filterItem);
   });
 
-  return { filters: filterArray };
+  return { payload: filterArray };
 };
 
 /**

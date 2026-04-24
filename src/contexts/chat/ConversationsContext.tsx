@@ -35,7 +35,12 @@ export function ConversationsProvider({ children }: { children: React.ReactNode 
         state.conversations.find(
           conv =>
             String(conv.id) === idStr ||
-            String(conv.uuid || '') === idStr,
+            String(conv.uuid || '') === idStr ||
+            // display_id is the Chatwoot-style sequential number surfaced in
+            // URLs (/app/accounts/:n/conversations/42). Matched here so the
+            // route param resolves to the same conversation object regardless
+            // of whether the caller had the UUID or just the display id.
+            String(conv.display_id || '') === idStr,
         ) || null
       );
     },

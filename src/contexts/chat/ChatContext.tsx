@@ -340,25 +340,31 @@ function useChatIntegration() {
           // Preservar unread_count atual do estado ao atualizar conversa via WebSocket
           const currentUnreadCount = conversations.getUnreadCount(targetConversationId);
 
+          const isActivityMessage = message.message_type === MESSAGE_TYPE.ACTIVITY;
+
           const updatedConversation: Conversation = {
             ...conversation,
             timestamp: validTimestamp,
             last_activity_at: new Date(validTimestamp * 1000).toISOString(),
             unread_count: currentUnreadCount ?? conversation.unread_count ?? 0,
-            last_non_activity_message: {
-              id: message.id,
-              content: message.content ?? '',
-              message_type: message.message_type,
-              created_at:
-                typeof message.created_at === 'number'
-                  ? String(message.created_at)
-                  : (message.created_at ?? new Date(validTimestamp * 1000).toISOString()),
-              processed_message_content:
-                (message as { processed_message_content?: string }).processed_message_content ??
-                message.content ??
-                '',
-              sender: message.sender ?? { id: '', name: '', type: 'contact' },
-            },
+            ...(isActivityMessage
+              ? {}
+              : {
+                  last_non_activity_message: {
+                    id: message.id,
+                    content: message.content ?? '',
+                    message_type: message.message_type,
+                    created_at:
+                      typeof message.created_at === 'number'
+                        ? String(message.created_at)
+                        : (message.created_at ?? new Date(validTimestamp * 1000).toISOString()),
+                    processed_message_content:
+                      (message as { processed_message_content?: string }).processed_message_content ??
+                      message.content ??
+                      '',
+                    sender: message.sender ?? { id: '', name: '', type: 'contact' },
+                  },
+                }),
           };
 
           conversations.updateConversation(updatedConversation);
@@ -602,6 +608,17 @@ function useChatIntegration() {
 
       onConversationLastActivity: (conversationId: string, lastActivityAt: string) => {
         conversations.updateConversationLastActivity(conversationId, lastActivityAt);
+      },
+
+      // Realtime propagation for Contact edits. Any tab/user that edits a
+      // contact broadcasts a `contact.updated` event; we patch the local
+      // conversations state (sidebar, header, list) so the UI reflects the
+      // change without a page refresh.
+      onContactUpdated: contact => {
+        if (!contact || !contact.id) return;
+        conversations.updateContactInConversations(contact as unknown as Parameters<
+          typeof conversations.updateContactInConversations
+        >[0]);
       },
     });
   }, [websocket, messages, conversations, currentUser, shouldReloadMessageForMissingImageData]);

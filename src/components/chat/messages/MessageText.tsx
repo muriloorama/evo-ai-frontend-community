@@ -2,6 +2,35 @@ import React from 'react';
 import { ExternalLink } from 'lucide-react';
 
 const URL_REGEX = /https?:\/\/[^\s<>"')\]]+/gi;
+const WA_FORMAT_REGEX = /\*([^*\n]+?)\*|_([^_\n]+?)_|~([^~\n]+?)~|`([^`\n]+?)`/g;
+
+function renderWhatsAppFormatting(text: string, keyPrefix: string): React.ReactNode[] {
+  const nodes: React.ReactNode[] = [];
+  WA_FORMAT_REGEX.lastIndex = 0;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  let idx = 0;
+  while ((match = WA_FORMAT_REGEX.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      nodes.push(text.slice(lastIndex, match.index));
+    }
+    const key = `${keyPrefix}-fmt-${idx++}`;
+    if (match[1] !== undefined) nodes.push(<strong key={key}>{match[1]}</strong>);
+    else if (match[2] !== undefined) nodes.push(<em key={key}>{match[2]}</em>);
+    else if (match[3] !== undefined) nodes.push(<s key={key}>{match[3]}</s>);
+    else if (match[4] !== undefined)
+      nodes.push(
+        <code key={key} className="px-1 py-0.5 rounded bg-muted/50 font-mono text-[0.85em]">
+          {match[4]}
+        </code>
+      );
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < text.length) {
+    nodes.push(text.slice(lastIndex));
+  }
+  return nodes.length ? nodes : [text];
+}
 
 function LinkPreview({ url }: { url: string }) {
   let hostname = '';
@@ -185,7 +214,9 @@ const MessageText: React.FC<MessageTextProps> = ({
         const start = match.index;
 
         if (start > lastIndex) {
-          parts.push(line.slice(lastIndex, start));
+          parts.push(
+            ...renderWhatsAppFormatting(line.slice(lastIndex, start), `${lineIdx}-${lastIndex}`)
+          );
         }
 
         if (!detectedUrls.includes(url)) {
@@ -208,12 +239,14 @@ const MessageText: React.FC<MessageTextProps> = ({
       }
 
       if (lastIndex < line.length) {
-        parts.push(line.slice(lastIndex));
+        parts.push(
+          ...renderWhatsAppFormatting(line.slice(lastIndex), `${lineIdx}-${lastIndex}`)
+        );
       }
 
       return (
         <React.Fragment key={lineIdx}>
-          {parts.length > 0 ? parts : line}
+          {parts.length > 0 ? parts : renderWhatsAppFormatting(line, `${lineIdx}`)}
           {lineIdx < lines.length - 1 && <br />}
         </React.Fragment>
       );

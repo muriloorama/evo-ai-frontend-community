@@ -157,9 +157,10 @@ const FileUpload: React.FC<FileUploadProps> = ({
         disabled={disabled}
       />
 
-      {/* Upload Button */}
+      {/* Upload Button — estilo ghost consistente com demais ícones do composer.
+          Áreas de toque maiores no mobile (h-11) e h-9 no desktop. */}
       <Button
-        variant="outline"
+        variant="ghost"
         size="icon"
         onClick={() => {
           if (!disabled) {
@@ -167,10 +168,10 @@ const FileUpload: React.FC<FileUploadProps> = ({
           }
         }}
         disabled={disabled}
-        className="flex-shrink-0"
+        className="h-11 w-11 md:h-9 md:w-9 rounded-full flex-shrink-0 hover:bg-accent disabled:opacity-50"
         title={t('messageInput.fileUpload.attachFiles')}
       >
-        <Paperclip className="h-4 w-4" />
+        <Paperclip className="h-5 w-5 text-muted-foreground" />
       </Button>
 
       {/* Drag overlay when dragging over the entire chat */}

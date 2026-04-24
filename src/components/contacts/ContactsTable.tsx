@@ -109,7 +109,7 @@ export default function ContactsTable({
       key: 'status',
       label: t('table.columns.status'),
       sortable: false,
-      render: contact => <ContactStatusBadge blocked={contact.blocked} />,
+      render: contact => <ContactStatusBadge blocked={contact.blocked ?? false} />,
     },
   ];
 

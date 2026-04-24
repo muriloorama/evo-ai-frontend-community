@@ -29,13 +29,13 @@ import { twoFactorService } from '@/services/profile/twoFactorService';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { AlertCircle, Globe } from 'lucide-react';
+import { AlertCircle, Globe, Eye, EyeOff } from 'lucide-react';
 
 import { ApiError } from '@/types/auth';
 import { type Locale } from '@/i18n/config';
 import { useGlobalConfig } from '@/contexts/GlobalConfigContext';
 
-import logo from '@/assets/EVO_CRM.png';
+import AppLogo from '@/components/AppLogo';
 
 export const Auth: React.FC = () => {
   const { login: authLogin, mfaState, verifyMfaCode, clearMfaState, setMfaRequired } = useAuth();
@@ -56,6 +56,9 @@ export const Auth: React.FC = () => {
   const [loginError, setLoginError] = useState('');
   const [registerError, setRegisterError] = useState('');
   const [forgotPasswordError, setForgotPasswordError] = useState('');
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
+  const [showRegisterConfirmPassword, setShowRegisterConfirmPassword] = useState(false);
 
   // Ref para controlar se o toast de sessão expirada já foi mostrado
   const sessionExpiredToastShown = useRef(false);
@@ -432,11 +435,7 @@ export const Auth: React.FC = () => {
         <div className="w-full max-w-md space-y-6">
           {/* Logo */}
           <div className="text-center">
-            <img
-              src={logo}
-              alt="EVO CRM"
-              className="h-10 mx-auto"
-            />
+            <AppLogo className="h-10 mx-auto" />
           </div>
 
           {/* Formulário */}
@@ -485,13 +484,28 @@ export const Auth: React.FC = () => {
 
                   <div className="space-y-2">
                     <Label htmlFor="login-password">{t('auth.login.password')}</Label>
-                    <Input
-                      id="login-password"
-                      type="password"
-                      placeholder={t('auth.login.password')}
-                      disabled={isLoading}
-                      {...loginForm.register('password')}
-                    />
+                    <div className="relative">
+                      <Input
+                        id="login-password"
+                        type={showLoginPassword ? 'text' : 'password'}
+                        placeholder={t('auth.login.password')}
+                        disabled={isLoading}
+                        className="pr-10"
+                        {...loginForm.register('password')}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowLoginPassword(!showLoginPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        tabIndex={-1}
+                      >
+                        {showLoginPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
                     {loginForm.formState.errors.password && (
                       <p className="text-destructive text-sm">
                         {loginForm.formState.errors.password.message}
@@ -571,13 +585,28 @@ export const Auth: React.FC = () => {
 
                     <div className="space-y-2">
                       <Label htmlFor="register-password">{t('auth.register.password')}</Label>
-                      <Input
-                        id="register-password"
-                        type="password"
-                        placeholder={t('auth.register.password')}
-                        disabled={isLoading}
-                        {...registerForm.register('password')}
-                      />
+                      <div className="relative">
+                        <Input
+                          id="register-password"
+                          type={showRegisterPassword ? 'text' : 'password'}
+                          placeholder={t('auth.register.password')}
+                          disabled={isLoading}
+                          className="pr-10"
+                          {...registerForm.register('password')}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowRegisterPassword(!showRegisterPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          tabIndex={-1}
+                        >
+                          {showRegisterPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
                       {registerForm.formState.errors.password && (
                         <p className="text-destructive text-xs">
                           {registerForm.formState.errors.password.message}
@@ -589,13 +618,28 @@ export const Auth: React.FC = () => {
                       <Label htmlFor="register-confirmPassword">
                         {t('auth.register.confirmPassword')}
                       </Label>
-                      <Input
-                        id="register-confirmPassword"
-                        type="password"
-                        placeholder={t('auth.register.confirmPassword')}
-                        disabled={isLoading}
-                        {...registerForm.register('confirmPassword')}
-                      />
+                      <div className="relative">
+                        <Input
+                          id="register-confirmPassword"
+                          type={showRegisterConfirmPassword ? 'text' : 'password'}
+                          placeholder={t('auth.register.confirmPassword')}
+                          disabled={isLoading}
+                          className="pr-10"
+                          {...registerForm.register('confirmPassword')}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowRegisterConfirmPassword(!showRegisterConfirmPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          tabIndex={-1}
+                        >
+                          {showRegisterConfirmPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
                       {registerForm.formState.errors.confirmPassword && (
                         <p className="text-destructive text-sm">
                           {registerForm.formState.errors.confirmPassword.message}

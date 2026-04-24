@@ -368,6 +368,7 @@ const ChatArea = ({
               selectedConversation?.additional_attributes?.post_data as PostData | undefined
             }
             messageModerations={messageModerationsMap}
+            trackingSource={selectedConversation?.tracking_source}
             onLoadMore={handleLoadMore}
             onRetryMessage={handleRetryMessage}
             onReplyToMessage={handleReplyToMessage}

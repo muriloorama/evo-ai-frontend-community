@@ -38,14 +38,14 @@ export default function ContactModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] p-0">
-        <DialogHeader className="px-6 py-4 border-b">
-          <DialogTitle className="text-xl">
+      <DialogContent className="max-w-2xl w-[calc(100%-1rem)] sm:w-[calc(100%-2rem)] max-h-[95vh] sm:max-h-[90vh] p-0">
+        <DialogHeader className="px-4 sm:px-6 py-3 sm:py-4 border-b">
+          <DialogTitle className="text-lg sm:text-xl pr-8">
             {isNew ? t('form.title.new') : t('form.title.edit')}
           </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[calc(90vh-80px)] px-6 py-4">
+        <ScrollArea className="max-h-[calc(95vh-72px)] sm:max-h-[calc(90vh-80px)] px-4 sm:px-6 py-3 sm:py-4">
           <ContactForm
             contact={contact}
             isNew={isNew}

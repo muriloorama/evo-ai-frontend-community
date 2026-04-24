@@ -26,32 +26,30 @@ class UsersService {
     return extractData<User>(response);
   }
 
-  // Create user (with optional file upload)
-  async createUser(userData: UserFormData): Promise<User> {
+  // Create user (with optional file upload). Returns the created user plus an
+  // optional `temporary_password` when the backend auto-generated one (i.e. the
+  // admin didn't type a password) — the caller should display it once.
+  async createUser(
+    userData: UserFormData
+  ): Promise<{ user: User; temporary_password?: string }> {
     const { avatar, ...data } = userData;
 
     if (avatar) {
       const formData = new FormData();
-
-      // Add basic fields directly (not wrapped in 'user')
       Object.entries(data).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
           formData.append(key, String(value));
         }
       });
-
-      // Add avatar file
       formData.append('avatar', avatar);
 
       const response = await apiAuth.post('/users', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
-      return extractData<User>(response);
+      return extractData<{ user: User; temporary_password?: string }>(response);
     } else {
       const response = await apiAuth.post('/users', data);
-      return extractData<User>(response);
+      return extractData<{ user: User; temporary_password?: string }>(response);
     }
   }
 

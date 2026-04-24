@@ -20,6 +20,7 @@ import {
   Unlock,
   Pin,
   Archive,
+  IdCard,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -88,13 +89,15 @@ const ChatHeader = ({
   const isArchived = Boolean(conversation.custom_attributes?.archived);
 
   const inboxName = conversation.inbox?.name || '';
+  const inboxPhone = (conversation.inbox as { phone_number?: string } | undefined)?.phone_number;
+  const inboxDisplay = inboxPhone ? `${inboxName} (${inboxPhone})` : inboxName;
 
   const renderConversationStatusDropdown = () => {
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-            <MoreVertical className="h-4 w-4" />
+          <Button variant="ghost" size="sm" className="h-10 w-10 md:h-8 md:w-8 p-0">
+            <MoreVertical className="h-5 w-5 md:h-4 md:w-4" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
@@ -274,60 +277,99 @@ const ChatHeader = ({
   };
 
   return (
-    <div className="flex-shrink-0 p-4 border-b bg-background/95 backdrop-blur-sm">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          {/* Back button for mobile */}
-          <Button variant="ghost" size="sm" className="md:hidden" onClick={onBackClick}>
-            <ArrowLeft className="h-4 w-4" />
+    <div
+      className="flex-shrink-0 px-2 py-2 md:p-4 border-b bg-background/95 backdrop-blur-sm"
+      style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
+          {/* Back button for mobile (área de toque maior) */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="md:hidden h-10 w-10 p-0 -ml-1 flex-shrink-0"
+            onClick={onBackClick}
+          >
+            <ArrowLeft className="h-5 w-5" />
           </Button>
           <div
-            className="cursor-pointer hover:ring-2 hover:ring-primary/20 transition-all rounded-full"
+            className="cursor-pointer hover:ring-2 hover:ring-primary/20 transition-all rounded-full flex-shrink-0"
             onClick={onContactSidebarOpen}
           >
             <ContactAvatar contact={conversation.contact} />
           </div>
-          <div>
-            <h3 className="font-semibold">
+          <div className="min-w-0 flex-1">
+            <h3 className="font-semibold text-sm md:text-base truncate">
               {conversation.contact?.name || t('chatHeader.contactNoName')}
             </h3>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="flex items-center gap-1.5 md:gap-2 text-xs md:text-sm text-muted-foreground flex-wrap">
+              {/* Inbox name escondido no mobile pra economizar espaço */}
               {inboxName && (
                 <>
-                  <span>{inboxName}</span>
-                  <span>•</span>
+                  <span className="hidden md:inline truncate">{inboxDisplay}</span>
+                  <span className="hidden md:inline">•</span>
                 </>
               )}
-              <span>
-                {t('chatHeader.status')} {getStatusLabel(conversation.status)}
+              <span className="truncate">
+                {getStatusLabel(conversation.status)}
               </span>
+              {/* Pipeline stages: limitar exibição no mobile */}
+              {conversation.pipelines?.flatMap((pipeline) =>
+                pipeline.stages.map((stage) => (
+                  <span
+                    key={`${pipeline.id}-${stage.id}`}
+                    className="hidden md:inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
+                    style={{
+                      backgroundColor: stage.color ? `${stage.color}1A` : 'rgb(var(--muted))',
+                      color: stage.color || 'inherit',
+                      border: stage.color ? `1px solid ${stage.color}` : undefined,
+                    }}
+                    title={pipeline.name}
+                  >
+                    {stage.name}
+                  </span>
+                )),
+              )}
             </div>
           </div>
         </div>
         {/* Ações do chat */}
-        <div className="flex items-center gap-2">
-          {/* Botão abrir conversa pendente */}
+        <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
+          {/* Botão abrir conversa pendente — mais enxuto no mobile (só ícone) */}
           {isPendingStatus(conversation.status) && (
             <Button
               variant="plain"
               size="sm"
               onClick={() => onMarkAsOpen(conversation)}
-              className="flex items-center gap-2 text-primary hover:text-primary/80 hover:bg-primary/10 transition-all duration-200"
+              className="flex items-center gap-2 h-10 w-10 md:w-auto md:px-3 p-0 md:p-2 text-primary hover:text-primary/80 hover:bg-primary/10 transition-all duration-200"
+              title={t('chatHeader.openConversation')}
             >
-              <Unlock className="h-4 w-4" />
-              {t('chatHeader.openConversation')}
+              <Unlock className="h-5 w-5 md:h-4 md:w-4" />
+              <span className="hidden md:inline">{t('chatHeader.openConversation')}</span>
             </Button>
           )}
+
+          {/* Botão Contato: abre o sidebar com info do contato (renomear, atributos, pipeline, etc) */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onContactSidebarOpen}
+            className="flex items-center justify-center gap-1.5 h-10 w-10 md:h-8 md:w-auto md:px-2.5 p-0 md:p-2 text-primary border-primary/30 hover:bg-primary/10 hover:text-primary hover:border-primary/50"
+            title="Abrir detalhes do contato"
+          >
+            <IdCard className="h-5 w-5 md:h-3.5 md:w-3.5" />
+            <span className="hidden md:inline">Contato</span>
+          </Button>
 
           {/* Dropdown de ações da conversa */}
           {renderConversationStatusDropdown()}
 
-          {/* Botão fechar conversa */}
+          {/* Botão fechar conversa — escondido no mobile (já tem o back button) */}
           <Button
             variant="ghost"
             size="sm"
             onClick={onCloseConversation}
-            className="text-muted-foreground hover:text-foreground"
+            className="hidden md:inline-flex text-muted-foreground hover:text-foreground"
           >
             <X className="h-4 w-4" />
             <span className="sr-only">{t('chatHeader.closeConversation')}</span>

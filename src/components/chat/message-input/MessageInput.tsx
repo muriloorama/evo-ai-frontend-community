@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 
 import { Button } from '@evoapi/design-system/button';
 import { Card, CardContent } from '@evoapi/design-system/card';
+import { Popover, PopoverContent, PopoverTrigger } from '@evoapi/design-system/popover';
 import {
   Tooltip,
   TooltipContent,
@@ -19,6 +20,8 @@ import {
   Reply,
   PenLine,
   MessageSquareText,
+  Plus,
+  CalendarClock,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -42,8 +45,28 @@ import { ReplyMode, Message } from '@/types/chat/api';
 import type { CannedResponse } from '@/types/knowledge';
 
 import { MessageTemplateModal } from '../message-template';
+import ScheduleMessageDialog from './ScheduleMessageDialog';
 import '../rich-text-editor/RichTextEditor.css';
 import { getModifierSymbol } from '@/utils/platform';
+
+// Convert the rich editor's HTML output into plain text, preserving line
+// breaks so the recipient on WhatsApp / Instagram / etc. sees the same
+// paragraph structure without raw "<p>" / "<br>" tags.
+function htmlToPlainText(html: string): string {
+  if (!html) return '';
+  const withBreaks = html
+    .replace(/<\s*br\s*\/?\s*>/gi, '\n')
+    .replace(/<\/(p|div|h[1-6]|li|tr)>/gi, '\n')
+    .replace(/<li[^>]*>/gi, '- ');
+  const el = document.createElement('div');
+  el.innerHTML = withBreaks;
+  const text = el.textContent || el.innerText || '';
+  return text
+    .replace(/\u00a0/g, ' ')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
 
 interface SendMessageOptions {
   content: string;
@@ -109,6 +132,9 @@ const MessageInput: React.FC<MessageInputProps> = ({
 
   // 🎯 EMOJI PICKER: Estado
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
+  // Secondary toolbar popover (templates, canned, AI, signature)
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
 
   // 🎯 MESSAGE SIGNATURE: Hook para gerenciar assinatura
   const { isSignatureEnabled, toggleSignature, hasSignature, appendSignatureIfEnabled } =
@@ -330,6 +356,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   );
 
   const [showTemplatesModal, setShowTemplatesModal] = useState(false);
+  const [showScheduleDialog, setShowScheduleDialog] = useState(false);
 
   const handleTemplateClick = useCallback(() => {
     setShowTemplatesModal(true);
@@ -383,6 +410,14 @@ const MessageInput: React.FC<MessageInputProps> = ({
 
     if ((!currentMessage && selectedFiles.length === 0) || isDisabled || isSending) {
       return;
+    }
+
+    // Public messages on chat channels (WhatsApp, Instagram, etc.) go out as
+    // plain text to end users. Strip the rich editor's HTML markup so tags
+    // like <p>...</p> don't reach WhatsApp as literal characters.
+    // Private notes stay HTML — they render rich inside the CRM.
+    if (!isPrivate) {
+      currentMessage = htmlToPlainText(currentMessage);
     }
 
     if (!isPrivate && hasSignature) {
@@ -518,9 +553,18 @@ const MessageInput: React.FC<MessageInputProps> = ({
     return 'Enviar (Enter)';
   }, [user?.ui_settings?.editor_message_key]);
 
+  // Outer wrapper keeps the WhatsApp doodle background so the composer area
+  // continues the chat surface. The actual input is a solid pill rendered
+  // inside CardContent.
   const cardClassNames = `
-    w-full border-t border-x-0 border-b-0 rounded-none shadow-lg py-0 gap-0 transition-all duration-200 bg-background
+    w-full border-t border-x-0 border-b-0 rounded-none shadow-none py-0 gap-0 transition-all duration-200
+    bg-[url('/chat-bg-light.svg')] dark:bg-[url('/chat-bg-dark.svg')] bg-repeat
   `;
+
+  // True when the editor has typed content (used for mic ↔ send toggle).
+  const hasTypedContent = currentEditorMessage.trim().length > 0 || selectedFiles.length > 0;
+  const showMicButton =
+    replyMode === ReplyMode.REPLY && !isPendingConversation && !hasTypedContent;
 
   // Componente de preview da resposta
   const ReplyPreview = ({ message, onCancel }: { message: Message; onCancel: () => void }) => (
@@ -614,8 +658,14 @@ const MessageInput: React.FC<MessageInputProps> = ({
         )}
 
         {/* Input Area */}
-        <CardContent className="p-4 px-4 py-4 relative">
-          {/* 🎯 CANNED RESPONSES: Dropdown de sugestões */}
+        <CardContent
+          className="px-2 py-2 md:px-3 md:py-3 relative"
+          style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
+        >
+          {/* Centered container — pill stays comfortable on wide screens */}
+          <div className="w-full max-w-3xl mx-auto">
+
+          {/* Canned responses dropdown — overlays the pill */}
           {showCannedResponses && (
             <CannedResponsesList
               cannedResponses={filteredCannedResponses}
@@ -626,84 +676,42 @@ const MessageInput: React.FC<MessageInputProps> = ({
             />
           )}
 
-          {/* Primeira linha: Reply Mode Toggle + Botões de ação rápida */}
-          <div className="flex items-center justify-between mb-3 gap-3">
-            {/* Reply Mode Toggle */}
+          {/* Reply Mode Toggle — small chip above the pill */}
+          <div className="flex items-center justify-between mb-2 px-1">
             <ReplyModeToggle
               currentMode={isPendingConversation ? ReplyMode.NOTE : replyMode}
               onModeChange={isPendingConversation ? () => {} : setReplyMode}
               disabled={isDisabled || isSending || isPendingConversation}
               forcedMode={isPendingConversation ? ReplyMode.NOTE : undefined}
             />
-
-            {/* Botões de ação rápida - à direita */}
-            <div className="flex-shrink-0 flex items-center gap-1.5">
-              {/* Message Signature Button */}
-              {hasSignature && replyMode === ReplyMode.REPLY && !isPendingConversation && (
-                <div className="relative group">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    disabled={isDisabled || isSending}
-                    className={`h-9 w-9 flex-shrink-0 border-input hover:bg-accent hover:border-accent-foreground/20 disabled:opacity-50 transition-colors ${
-                      isSignatureEnabled
-                        ? 'bg-green-50 border-green-500 dark:bg-green-950/30 dark:border-green-500'
-                        : ''
-                    }`}
-                    onClick={toggleSignature}
-                  >
-                    <PenLine
-                      className={`h-4 w-4 ${
-                        isSignatureEnabled ? 'text-green-600 dark:text-green-400' : ''
-                      }`}
-                    />
-                  </Button>
-                  <div className="absolute bottom-full right-0 mb-2 px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                    {isSignatureEnabled
-                      ? t('messageInput.signature.disable')
-                      : t('messageInput.signature.enable')}
-                    <div className="absolute top-full right-3 -mt-1">
-                      <div className="border-4 border-transparent border-t-gray-900 dark:border-t-gray-700"></div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* AI Assistance Button */}
-              <AIAssistanceButton
-                currentMessage={currentEditorMessage}
-                onApplyText={text => {
-                  richEditorRef.current?.setContent(text);
-                  setCurrentEditorMessage(text);
-                }}
-                disabled={isDisabled || isSending || isPendingConversation}
-                conversationId={conversationId?.toString()}
-              />
-            </div>
           </div>
 
-          {/* Segunda linha: Botões de formatação + Input + Botões de envio */}
-          <div className="flex items-end gap-2 w-full overflow-visible">
-            {/* Botões de formatação à esquerda */}
-            <div className="flex-shrink-0 flex items-center gap-1.5 pb-1">
-              {/* File Upload Button */}
-              <FileUpload
-                onFilesSelected={handleFilesSelected}
-                maxFileSize={10}
-                multiple={true}
-                disabled={isDisabled || isSending || isPendingConversation || hasCannedMedia}
+          {/* WhatsApp-style pill: emoji + clip + textarea + more menu + mic/send.
+              When recording, the AudioRecorder takes over the pill body instead. */}
+          {isRecordingAudio ? (
+            <div className="w-full bg-sidebar border border-sidebar-border rounded-[24px] shadow-sm px-3 py-2">
+              <AudioRecorder
+                onRecordingComplete={handleAudioRecordingComplete}
+                onRecordingCancel={handleAudioRecordingCancel}
+                disabled={isDisabled || isSending}
+                autoStart={true}
+                preferWhatsAppCloudFormat={isWhatsAppCloud}
               />
-
-              {/* Emoji Button */}
-              <div className="relative">
+            </div>
+          ) : (
+          <div className="flex items-end gap-1 md:gap-2 w-full overflow-visible bg-sidebar border border-sidebar-border rounded-[24px] shadow-sm px-2 py-1.5">
+            {/* Left icons */}
+            <div className="flex-shrink-0 flex items-center gap-0.5 pb-0.5">
+              {/* Emoji — escondido no mobile pra economizar espaço (toca-se no teclado nativo) */}
+              <div className="relative hidden md:block">
                 <Button
                   variant="ghost"
                   size="icon"
                   disabled={isDisabled || isSending || isPendingConversation}
-                  className="h-9 w-9 flex-shrink-0 hover:bg-accent disabled:opacity-50"
+                  className="h-11 w-11 md:h-9 md:w-9 rounded-full flex-shrink-0 hover:bg-accent disabled:opacity-50"
                   onClick={handleEmojiClick}
                 >
-                  <Smile className="h-4 w-4" />
+                  <Smile className="h-5 w-5 text-muted-foreground" />
                 </Button>
                 <EmojiPicker
                   isOpen={showEmojiPicker}
@@ -711,33 +719,55 @@ const MessageInput: React.FC<MessageInputProps> = ({
                   onClose={() => setShowEmojiPicker(false)}
                 />
               </div>
-              {/* Canned Responses Button */}
-              <Button
-                variant={showCannedResponses ? 'default' : 'ghost'}
-                size="icon"
-                disabled={isDisabled || isSending || isPendingConversation}
-                className="h-9 w-9 flex-shrink-0 hover:bg-accent disabled:opacity-50"
-                onClick={handleCannedResponsesClick}
-                title={t('messageInput.cannedResponses.tooltip')}
-              >
-                <MessageSquareText className="h-4 w-4" />
-              </Button>
 
-              {/* Template Button */}
-              <Button
-                variant="ghost"
-                size="icon"
-                disabled={isSending || isPendingConversation}
-                className="h-9 w-9 flex-shrink-0 hover:bg-accent disabled:opacity-50"
-                onClick={handleTemplateClick}
-                title={t('messageTemplates.button.title')}
-              >
-                <FileText className="h-4 w-4" />
-              </Button>
+              {/* File Upload (clip) */}
+              <FileUpload
+                onFilesSelected={handleFilesSelected}
+                maxFileSize={10}
+                multiple={true}
+                disabled={isDisabled || isSending || isPendingConversation || hasCannedMedia}
+              />
             </div>
 
-            {/* Text Input Container */}
-            <div className="flex-1 min-w-0 overflow-hidden">
+            {/* Text Input
+                Wrapped in a form[autocomplete="off"] because Chrome on Android
+                and iOS Safari ignore autocomplete on contenteditable — the
+                only reliable way to suppress the card/password autofill bar
+                (the key/card/location/check icons over the keyboard) is to
+                put the editable inside a form that declares itself as
+                non-credential. role="presentation" stops Chrome's heuristic
+                form classifier from kicking in regardless. */}
+            <form
+              role="presentation"
+              autoComplete="off"
+              noValidate
+              onSubmit={e => e.preventDefault()}
+              className="flex-1 min-w-0 overflow-hidden self-center"
+            >
+            <div
+              className="w-full overflow-hidden"
+              data-gramm="false"
+              data-1p-ignore="true"
+              data-lpignore="true"
+              data-bwignore="true"
+              data-form-type="other"
+              // Intercept paste to harvest images/videos/files from the clipboard
+              // and route them into the same attachment flow as the paperclip
+              // button. ProseMirror doesn't consume the paste when it's only
+              // files (no text), so stopping propagation avoids weird behaviour.
+              onPaste={event => {
+                const items = Array.from(event.clipboardData?.items || []);
+                const files: File[] = [];
+                items.forEach(item => {
+                  if (item.kind !== 'file') return;
+                  const file = item.getAsFile();
+                  if (file) files.push(file);
+                });
+                if (files.length === 0) return;
+                event.preventDefault();
+                handleFilesSelected(files);
+              }}
+            >
               <RichTextEditor
                 ref={richEditorRef}
                 placeholder={
@@ -793,66 +823,151 @@ const MessageInput: React.FC<MessageInputProps> = ({
                   return false;
                 }}
                 disabled={isDisabled || isSending || (isPendingConversation && replyMode !== ReplyMode.NOTE)}
-                className="min-h-[100px]"
-                showToolbar={!isPendingConversation}
+                className="min-h-[36px] max-h-[160px] bg-transparent border-0"
+                showToolbar={false}
               />
             </div>
+            </form>
 
-            {/* Action Buttons */}
-            <div className="flex-shrink-0 flex items-center gap-1.5 pb-1">
-              {replyMode === ReplyMode.REPLY && !isPendingConversation && (
+            {/* Right cluster: more menu + mic/send */}
+            <div className="flex-shrink-0 flex items-center gap-0.5 pb-0.5">
+              {/* "..." secondary menu (canned, AI, signature, template) */}
+              <Popover open={showMoreMenu} onOpenChange={setShowMoreMenu}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    disabled={isDisabled || isSending || isPendingConversation}
+                    className="h-11 w-11 md:h-9 md:w-9 rounded-full flex-shrink-0 hover:bg-accent disabled:opacity-50"
+                    title={t('messageInput.moreMenu.title', { defaultValue: 'Mais opções' })}
+                  >
+                    <Plus className="h-5 w-5 text-muted-foreground" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" side="top" sideOffset={8} className="w-56 p-1">
+                  <button
+                    type="button"
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-accent disabled:opacity-50"
+                    onClick={() => {
+                      setShowMoreMenu(false);
+                      handleCannedResponsesClick();
+                    }}
+                    disabled={isDisabled || isSending || isPendingConversation}
+                  >
+                    <MessageSquareText className="h-4 w-4 text-muted-foreground" />
+                    <span>{t('messageInput.cannedResponses.tooltip')}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-accent disabled:opacity-50"
+                    onClick={() => {
+                      setShowMoreMenu(false);
+                      handleTemplateClick();
+                    }}
+                    disabled={isSending || isPendingConversation}
+                  >
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                    <span>{t('messageTemplates.button.title')}</span>
+                  </button>
+
+                  {conversationId && (
+                    <button
+                      type="button"
+                      className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-accent disabled:opacity-50"
+                      onClick={() => {
+                        setShowMoreMenu(false);
+                        setShowScheduleDialog(true);
+                      }}
+                      disabled={isDisabled || isSending || isPendingConversation}
+                    >
+                      <CalendarClock className="h-4 w-4 text-muted-foreground" />
+                      <span>Agendar mensagem</span>
+                    </button>
+                  )}
+
+                  <div className="px-3 py-2">
+                    <AIAssistanceButton
+                      currentMessage={currentEditorMessage}
+                      onApplyText={text => {
+                        richEditorRef.current?.setContent(text);
+                        setCurrentEditorMessage(text);
+                        setShowMoreMenu(false);
+                      }}
+                      disabled={isDisabled || isSending || isPendingConversation}
+                      conversationId={conversationId?.toString()}
+                    />
+                  </div>
+
+                  {hasSignature && replyMode === ReplyMode.REPLY && !isPendingConversation && (
+                    <button
+                      type="button"
+                      className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm hover:bg-accent disabled:opacity-50"
+                      onClick={() => {
+                        toggleSignature();
+                        setShowMoreMenu(false);
+                      }}
+                      disabled={isDisabled || isSending}
+                    >
+                      <PenLine
+                        className={`h-4 w-4 ${
+                          isSignatureEnabled ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'
+                        }`}
+                      />
+                      <span>
+                        {isSignatureEnabled
+                          ? t('messageInput.signature.disable')
+                          : t('messageInput.signature.enable')}
+                      </span>
+                    </button>
+                  )}
+                </PopoverContent>
+              </Popover>
+
+              {/* Mic ↔ Send dynamic toggle (WhatsApp behavior) */}
+              {showMicButton ? (
                 <Button
                   variant={isRecordingAudio ? 'default' : 'ghost'}
                   size="icon"
                   disabled={isDisabled || isSending}
                   className={
                     isRecordingAudio
-                      ? 'bg-primary hover:bg-primary/85 text-primary-foreground h-9 w-9 flex-shrink-0 shadow-md transition-all duration-200'
-                      : 'h-9 w-9 flex-shrink-0 hover:bg-accent transition-all duration-200'
+                      ? 'bg-primary hover:bg-primary/85 text-primary-foreground h-12 w-12 md:h-10 md:w-10 rounded-full flex-shrink-0 shadow-md transition-all duration-200'
+                      : 'h-12 w-12 md:h-10 md:w-10 rounded-full flex-shrink-0 bg-primary hover:bg-primary/85 text-primary-foreground transition-all duration-200'
                   }
                   onClick={startAudioRecording}
                 >
-                  <Mic className="h-4 w-4" />
+                  <Mic className="h-5 w-5" />
                 </Button>
+              ) : (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="icon"
+                        onClick={handleSend}
+                        disabled={!canSend}
+                        className="bg-primary hover:bg-primary/85 text-primary-foreground h-12 w-12 md:h-10 md:w-10 rounded-full flex-shrink-0 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-50"
+                      >
+                        {isSending ? (
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                        ) : (
+                          <Send className="h-5 w-5" />
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{sendButtonTooltip}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               )}
-
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      size="icon"
-                      onClick={handleSend}
-                      disabled={!canSend}
-                      className="bg-primary hover:bg-primary/85 text-primary-foreground h-9 w-9 flex-shrink-0 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-50"
-                    >
-                      {isSending ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Send className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{sendButtonTooltip}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
             </div>
+          </div>
+          )}
           </div>
         </CardContent>
       </Card>
-
-      {isRecordingAudio && (
-        <div className="mt-4">
-          <AudioRecorder
-            onRecordingComplete={handleAudioRecordingComplete}
-            onRecordingCancel={handleAudioRecordingCancel}
-            disabled={isDisabled || isSending}
-            autoStart={true}
-            preferWhatsAppCloudFormat={isWhatsAppCloud}
-          />
-        </div>
-      )}
 
       {/* Message Templates Modal */}
       <MessageTemplateModal
@@ -863,6 +978,22 @@ const MessageInput: React.FC<MessageInputProps> = ({
         isWhatsAppCloud={isWhatsAppCloud}
         onSend={handleSendTemplate}
       />
+
+      {/* Schedule message dialog — queues the current draft + attachments
+          to be dispatched by the ScheduledMessages cron job. */}
+      {conversationId && (
+        <ScheduleMessageDialog
+          conversationId={conversationId}
+          open={showScheduleDialog}
+          onOpenChange={setShowScheduleDialog}
+          initialContent={htmlToPlainText(richEditorRef.current?.getContent() || '')}
+          initialFiles={selectedFiles}
+          onScheduled={() => {
+            richEditorRef.current?.clear();
+            setSelectedFiles([]);
+          }}
+        />
+      )}
     </>
   );
 };

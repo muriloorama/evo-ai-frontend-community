@@ -14,6 +14,7 @@ import {
   WhatsappCloudPayload,
   WhatsappEvolutionGoPayload,
   WhatsappEvolutionPayload,
+  WhatsappUazapiPayload,
   WhatsappTwilioPayload,
   WhatsappNotificamePayload,
   WhatsappZapiPayload,
@@ -21,6 +22,7 @@ import {
 } from '@/types/channels/inbox';
 import EvolutionService from '@/services/channels/evolutionService';
 import EvolutionGoService from '@/services/channels/evolutionGoService';
+import UazapiService from '@/services/channels/uazapiService';
 import EmailOauthService from '@/services/channels/emailOauthService';
 import TwilioService from '@/services/channels/twilioService';
 import NotificameService from '@/services/channels/notificameService';
@@ -69,7 +71,7 @@ export const useChannelSubmission = (form?: FormData) => {
     selectedChannel: ChannelType,
     selectedProvider: ProviderType,
     form: FormData,
-    config: { hasEvolutionConfig: boolean; hasEvolutionGoConfig: boolean },
+    config: { hasEvolutionConfig: boolean; hasEvolutionGoConfig: boolean; hasUazapiConfig?: boolean },
   ) => {
     if (!selectedProvider || !selectedChannel) return;
 
@@ -204,6 +206,37 @@ export const useChannelSubmission = (form?: FormData) => {
           result = { success: false, error: (error as Error).message };
           setHealthCheckPassed(false);
         }
+      } else if (selectedProvider.id === 'uazapi') {
+        const useGlobalConfig = config.hasUazapiConfig === true;
+        try {
+          if (!useGlobalConfig) {
+            const apiUrl = getStr(form, 'api_url');
+            const adminToken = getStr(form, 'admin_token');
+
+            if (!apiUrl || !adminToken) {
+              result = { success: false, error: 'URL do servidor e token são obrigatórios' };
+              setHealthCheckPassed(false);
+              setIsTesting(false);
+              toast.error(result.error);
+              return;
+            }
+
+            const healthOk = await UazapiService.healthCheck(apiUrl);
+            if (!healthOk) {
+              result = { success: false, error: 'Servidor WhatsApp não respondeu. Verifique a URL.' };
+              setHealthCheckPassed(false);
+              setIsTesting(false);
+              toast.error(result.error);
+              return;
+            }
+          }
+
+          result = { success: true, message: 'Pronto para conectar.' };
+          setHealthCheckPassed(true);
+        } catch (error) {
+          result = { success: false, error: (error as Error).message };
+          setHealthCheckPassed(false);
+        }
       } else if (selectedProvider.id === 'twilio' && selectedChannel.type === 'whatsapp') {
         try {
           result = await TwilioService.verifyConnection({
@@ -269,6 +302,7 @@ export const useChannelSubmission = (form?: FormData) => {
         | WhatsappCloudPayload
         | WhatsappEvolutionPayload
         | WhatsappEvolutionGoPayload
+        | WhatsappUazapiPayload
         | WhatsappTwilioPayload
         | WhatsappNotificamePayload
         | WhatsappZapiPayload;
@@ -421,6 +455,7 @@ export const useChannelSubmission = (form?: FormData) => {
                   api_key: getStr(form, 'api_key'),
                   phone_number_id: getStr(form, 'phone_number_id'),
                   waba_id: getStr(form, 'waba_id'),
+                  webhook_verify_token: getStr(form, 'webhook_verify_token'),
                 },
               },
             } as WhatsappCloudPayload;
@@ -653,6 +688,61 @@ export const useChannelSubmission = (form?: FormData) => {
                 provider_config: providerConfig,
               },
             } as WhatsappEvolutionGoPayload;
+          } else if (selectedProvider.id === 'uazapi') {
+            const useGlobalConfig = config.hasUazapiConfig === true;
+            const apiUrl = useGlobalConfig ? '' : getStr(form, 'api_url');
+            const adminToken = useGlobalConfig ? '' : getStr(form, 'admin_token');
+            const instanceName = getStr(form, 'instance_name') || getStr(form, 'name');
+            // Phone é opcional; geramos placeholder quando vazio para satisfazer o
+            // validador do Channel::Whatsapp. Será atualizado via webhook de conexão.
+            const rawPhone = getStr(form, 'phone_number');
+            const phoneNumber =
+              rawPhone || `+uazapi-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+
+            if (!useGlobalConfig && (!apiUrl || !adminToken)) {
+              throw new Error('URL do servidor e token de administração são obrigatórios');
+            }
+
+            if (!useGlobalConfig) {
+              const healthOk = await UazapiService.healthCheck(apiUrl);
+              if (!healthOk) {
+                throw new Error('Servidor WhatsApp não respondeu. Verifique a URL.');
+              }
+            }
+
+            // Cria a instância no servidor e recebe o token de instância (UUID).
+            // Quando useGlobalConfig=true, o backend preenche api_url/admin_token via config global.
+            const verifyPayload: any = { instanceName, phoneNumber };
+            if (!useGlobalConfig) {
+              verifyPayload.apiUrl = apiUrl;
+              verifyPayload.adminToken = adminToken;
+            }
+            const auth = await UazapiService.verifyConnection(verifyPayload);
+
+            const instanceToken = auth.instance_token;
+            if (!instanceToken) {
+              throw new Error('O servidor não retornou um token de instância.');
+            }
+
+            const providerConfig: any = {
+              instance_name: instanceName,
+              instance_token: instanceToken,
+            };
+            if (!useGlobalConfig) {
+              providerConfig.api_url = apiUrl;
+              providerConfig.admin_token = adminToken;
+            }
+
+            payload = {
+              name: getStr(form, 'name') || 'WhatsApp',
+              display_name: getStr(form, 'display_name') || getStr(form, 'name') || 'WhatsApp',
+              channel: {
+                type: 'whatsapp',
+                phone_number: phoneNumber,
+                provider: 'uazapi',
+                provider_config: providerConfig,
+              },
+            } as WhatsappUazapiPayload;
           } else if (selectedProvider.id === 'zapi') {
             payload = {
               name: getStr(form, 'name') || 'WhatsApp Z-API',

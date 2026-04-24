@@ -109,33 +109,40 @@ export interface ContactPipelineInfo {
   };
 }
 
+// Canonical Contact type — single source of truth.
+// Most fields optional so it can absorb partial payloads (WebSocket, sender
+// meta, list-page card, full profile). Only id + name are guaranteed.
 export interface Contact {
   id: string;
   name: string;
-  type: 'person' | 'company';
-  email: string;
-  phone_number: string;
-  thumbnail: string;
-  avatar: string;
-  avatar_url: string;
-  identifier?: string;
-  tax_id: string;
-  website: string;
-  industry: string;
-  created_at: string;
-  updated_at: string;
+  type?: 'person' | 'company';
+  email?: string | null;
+  phone_number?: string | null;
+  thumbnail?: string | null;
+  avatar?: string | null;
+  avatar_url?: string | null;
+  identifier?: string | null;
+  tax_id?: string;
+  website?: string;
+  industry?: string;
+  created_at?: string;
+  updated_at?: string;
   last_activity_at?: string;
-  availability_status: 'online' | 'offline' | 'busy' | 'away';
-  blocked: boolean;
-  custom_attributes: Record<string, any>;
-  additional_attributes: ContactAdditionalAttributes;
-  contact_inboxes: ContactableInboxes[];
-  labels?: string[];
+  availability_status?: 'online' | 'offline' | 'busy' | 'away';
+  blocked?: boolean;
+  custom_attributes?: Record<string, unknown>;
+  additional_attributes?: ContactAdditionalAttributes;
+  contact_inboxes?: ContactableInboxes[];
+  // Labels can come as strings (from Contacts page) or tagged objects (from chat).
+  labels?: Array<string | { name: string; color: string }>;
   companies?: CompanyReference[];
   persons?: PersonReference[];
   persons_count?: number;
   company_contacts_count?: number;
   conversations_count?: number;
+  // Location fields present on chat/sender payloads from the websocket.
+  location?: string | null;
+  country_code?: string | null;
   last_conversation?: {
     id: string;
     status: string;

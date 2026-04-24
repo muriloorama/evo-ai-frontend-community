@@ -16,6 +16,7 @@ export interface GlobalConfig {
   // Only boolean indicators to check if config exists
   hasEvolutionConfig?: boolean;
   hasEvolutionGoConfig?: boolean;
+  hasUazapiConfig?: boolean;
   openaiConfigured?: boolean;
   enableAccountSignup?: boolean;
   recaptchaSiteKey?: string;

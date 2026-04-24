@@ -134,6 +134,15 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>
             'Mod-i': toggleMark(messageSchema.marks.em),
             'Mod-`': toggleMark(messageSchema.marks.code),
             'Shift-Ctrl-8': wrapInList(messageSchema.nodes.bullet_list),
+            // Shift+Enter inserts a hard line break (WhatsApp / Slack behavior).
+            'Shift-Enter': (state, dispatch) => {
+              if (dispatch) {
+                dispatch(
+                  state.tr.replaceSelectionWith(messageSchema.nodes.hard_break.create()).scrollIntoView(),
+                );
+              }
+              return true;
+            },
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             Enter: (_state, _dispatch) => {
               if (onKeyDownRef.current) {
@@ -172,8 +181,22 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>
         editable: () => !disabled,
         attributes: {
           class:
-            'prosemirror-editor p-3 min-h-[100px] max-h-[200px] overflow-y-auto focus:outline-none resize-none text-sm leading-relaxed text-foreground',
+            'prosemirror-editor px-2 py-1.5 min-h-[24px] max-h-[160px] overflow-y-auto focus:outline-none resize-none text-sm leading-relaxed text-foreground',
           'data-placeholder': placeholder,
+          // Without these hints, mobile browsers (especially Android Chrome
+          // and iOS Safari) treat the contentEditable as an ambiguous input
+          // and pop up the autofill bar with password/card/address icons.
+          // Explicitly tagging it as freeform chat text suppresses that.
+          autocomplete: 'off',
+          autocorrect: 'off',
+          autocapitalize: 'sentences',
+          spellcheck: 'true',
+          inputmode: 'text',
+          enterkeyhint: 'send',
+          'data-form-type': 'other',
+          'data-1p-ignore': 'true',
+          'data-lpignore': 'true',
+          'data-bwignore': 'true',
         },
       });
 
@@ -224,7 +247,7 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>
     };
 
     return (
-      <div className={`border border-border rounded-lg overflow-hidden bg-background ${className}`}>
+      <div className={`overflow-hidden ${className}`}>
         {showToolbar && (
           <EditorToolbar
             editorState={editorState}

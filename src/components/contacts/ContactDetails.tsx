@@ -198,7 +198,7 @@ export default function ContactDetails({
           <Avatar className="h-20 w-20 shrink-0">
             {contact.avatar_url || contact.thumbnail ? (
               <img
-                src={contact.avatar_url || contact.thumbnail}
+                src={contact.avatar_url || contact.thumbnail || undefined}
                 alt={contact.name}
                 className="h-20 w-20 rounded-full object-cover"
               />
@@ -253,7 +253,7 @@ export default function ContactDetails({
               )}
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <ContactStatusBadge blocked={contact.blocked} />
+              <ContactStatusBadge blocked={contact.blocked ?? false} />
               {contact.conversations_count !== undefined && (
                 <Badge variant="secondary">
                   {contact.conversations_count} {t('details.conversations')}

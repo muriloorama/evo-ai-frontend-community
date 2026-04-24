@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { UserResponse, UISettings, UserTour } from '@/types/auth';
+import { UserResponse, UISettings, UserTour, AccountMembership } from '@/types/auth';
 import { validateToken } from '@/services/auth/authService';
 import { tourService } from '@/services/tours/tourService';
 import { useAppDataStore } from './appDataStore';
@@ -18,6 +18,14 @@ interface AuthState {
   // Token data
   accessToken: string | null;
 
+  // Multi-account (Fase 1.4+): the logged-in user may belong to N accounts,
+  // with a currently-active one driving all scoped requests. activeAccountNumber
+  // is the Chatwoot-style sequential identifier surfaced in URLs.
+  accounts: AccountMembership[];
+  activeAccountId: string | null;
+  activeAccountNumber: number | null;
+  superAdmin: boolean;
+
   impersonation: ImpersonationData | null;
 
   // UI flags
@@ -31,11 +39,16 @@ interface AuthState {
   setUser: (user: UserResponse | null) => void;
   setLoading: (loading: boolean) => void;
   setAccessToken: (token: string | null) => void;
+  setAccounts: (accounts: AccountMembership[]) => void;
+  setActiveAccountId: (accountId: string | null) => void;
+  setActiveAccountNumber: (accountNumber: number | null) => void;
+  setSuperAdmin: (flag: boolean) => void;
   clearUser: () => void;
   validityCheck: () => Promise<void>;
   updateUISettings: (settings: Partial<UISettings>) => void;
   updateAvailability: (availability: 'online' | 'offline' | 'busy') => void;
   getAuthHeader: () => { Authorization: string } | undefined;
+  activeAccount: () => AccountMembership | null;
 
   // Tour actions
   setTours: (tours: UserTour[]) => void;
@@ -61,6 +74,14 @@ export const useAuthStore = create<AuthState>((set, get) => {
     isFetching: false,
     impersonation: null,
     tours: {},
+    accounts: [],
+    activeAccountId: localStorage.getItem('active_account_id'),
+    activeAccountNumber: (() => {
+      const raw = localStorage.getItem('active_account_number');
+      const parsed = raw ? Number(raw) : NaN;
+      return Number.isFinite(parsed) ? parsed : null;
+    })(),
+    superAdmin: false,
 
     setUser: user => {
       const isLoggedIn = checkIsLoggedIn(user);
@@ -81,6 +102,34 @@ export const useAuthStore = create<AuthState>((set, get) => {
       }
     },
 
+    setAccounts: (accounts) => set({ accounts: accounts || [] }),
+
+    setActiveAccountId: (accountId) => {
+      set({ activeAccountId: accountId });
+      if (accountId) {
+        localStorage.setItem('active_account_id', accountId);
+      } else {
+        localStorage.removeItem('active_account_id');
+      }
+    },
+
+    setActiveAccountNumber: (accountNumber) => {
+      set({ activeAccountNumber: accountNumber });
+      if (accountNumber !== null && accountNumber !== undefined) {
+        localStorage.setItem('active_account_number', String(accountNumber));
+      } else {
+        localStorage.removeItem('active_account_number');
+      }
+    },
+
+    setSuperAdmin: (flag) => set({ superAdmin: !!flag }),
+
+    activeAccount: () => {
+      const { accounts, activeAccountId } = get();
+      if (!activeAccountId) return accounts[0] || null;
+      return accounts.find(a => a.id === activeAccountId) || accounts[0] || null;
+    },
+
     getAuthHeader: () => {
       const token = get().accessToken || localStorage.getItem('access_token');
       if (token) {
@@ -91,10 +140,16 @@ export const useAuthStore = create<AuthState>((set, get) => {
 
     clearUser: () => {
       localStorage.removeItem('access_token');
+      localStorage.removeItem('active_account_id');
+      localStorage.removeItem('active_account_number');
       set({
         currentUser: null,
         accessToken: null,
         isLoggedIn: false,
+        accounts: [],
+        activeAccountId: null,
+        activeAccountNumber: null,
+        superAdmin: false,
       });
     },
 

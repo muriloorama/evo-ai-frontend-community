@@ -60,6 +60,7 @@ interface MessageListProps {
   isPostConversation?: boolean;
   postData?: PostData;
   messageModerations?: Map<string, FacebookCommentModeration>; // Map of message_id -> moderation
+  trackingSource?: { source_type: string; source_label?: string | null } | null;
   onLoadMore: () => void;
   onRetryMessage: (messageId: string) => void;
   onReplyToMessage: (message: Message) => void;
@@ -147,6 +148,10 @@ const MessageList: React.FC<MessageListProps> = ({
     const system: Message[] = [];
 
     for (const msg of messages) {
+      // Reactions are rendered as badges on their parent bubble (see
+      // MessageBubble), not as standalone messages.
+      if (msg.content_attributes?.is_reaction) continue;
+
       if (
         msg.message_type === MESSAGE_TYPE.ACTIVITY ||
         msg.message_type === MESSAGE_TYPE.TEMPLATE
@@ -321,10 +326,14 @@ const MessageList: React.FC<MessageListProps> = ({
 
   return (
     <div className="relative w-full h-full flex flex-col" style={{ minHeight: 0 }}>
-      {/* Messages Container */}
+      {/* Messages Container — WhatsApp-style doodle background. The pattern
+          tiles at 280x280 and swaps between two SVGs based on the active
+          Tailwind theme so dark mode keeps the same texture in inverted tone. */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-scroll overflow-x-hidden p-4"
+        className="flex-1 overflow-y-scroll overflow-x-hidden px-2 py-3 md:p-4
+                   bg-[url('/chat-bg-light.svg')] dark:bg-[url('/chat-bg-dark.svg')]
+                   bg-repeat overscroll-contain"
         onScroll={handleScroll}
         style={{ scrollBehavior: 'auto' }}
       >
@@ -586,6 +595,9 @@ const MessageList: React.FC<MessageListProps> = ({
 
               return (
                 <div key={`${message.id}-${index}`} data-message-id={message.id}>
+                  {/* AdReferralBadge removido: o ícone Instagram/Meta já
+                      aparece no sidebar ao lado da conversa. Repetir o label
+                      aqui como "Instagram Ads · <campanha>" polui o chat. */}
                   <MessageBubble
                     message={message}
                     isOwn={isOwn}
@@ -609,16 +621,16 @@ const MessageList: React.FC<MessageListProps> = ({
         </div>
       </div>
 
-      {/* Botão voltar ao final */}
+      {/* Botão voltar ao final — área de toque maior no mobile */}
       {!isNearBottom && (
-        <div className="absolute bottom-4 right-4 z-10">
+        <div className="absolute bottom-3 right-3 md:bottom-4 md:right-4 z-10">
           <Button
             size="icon"
             variant="secondary"
-            className="rounded-full shadow-lg border bg-background/95 backdrop-blur-sm hover:bg-accent"
+            className="h-11 w-11 md:h-10 md:w-10 rounded-full shadow-lg border bg-background/95 backdrop-blur-sm hover:bg-accent"
             onClick={scrollToBottom}
           >
-            <ChevronDown className="h-4 w-4" />
+            <ChevronDown className="h-5 w-5 md:h-4 md:w-4" />
           </Button>
         </div>
       )}

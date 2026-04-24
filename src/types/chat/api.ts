@@ -54,6 +54,11 @@ export interface Conversation {
   waiting_since: number;
   meta: ConversationMeta;
   contact: Contact;
+  contact_inbox_source_id?: string | null;
+  tracking_source?: {
+    source_type: string;
+    source_label?: string | null;
+  } | null;
   inbox: Inbox;
   assignee: Agent | null;
   team: Team | null;
@@ -81,6 +86,7 @@ export interface Conversation {
     message_type: MessageTypeValue;
     created_at: string;
     processed_message_content: string;
+    attachment_type?: string | null;
     sender: {
       id: string;
       name: string;
@@ -96,6 +102,9 @@ export interface ConversationMeta {
     error?: string;
     qr_data_url?: string;
   };
+  // Lightweight sender stub that ships with websocket conversation payloads.
+  // Used by WebSocketContext to hydrate conversation.contact on incoming
+  // events; nothing in the live UI reads from meta.sender directly anymore.
   sender: {
     id: string;
     name: string;
@@ -120,45 +129,12 @@ export type FilterOperator =
   | 'days_before';
 
 // ===== RE-EXPORTS =====
-// Re-exporta tipos compartilhados para conveniência
-// Contact flexível para aceitar dados parciais do WebSocket
-export type Contact = {
-  id: string;
-  name: string;
-  type?: 'person' | 'company';
-  email?: string | null;
-  phone_number?: string | null;
-  thumbnail?: string;
-  avatar?: string | null;
-  avatar_url?: string | null;
-  identifier?: string | null;
-  tax_id?: string;
-  website?: string;
-  industry?: string;
-  created_at?: string;
-  updated_at?: string;
-  last_activity_at?: string;
-  availability_status?: 'online' | 'offline' | 'busy' | 'away';
-  blocked?: boolean;
-  custom_attributes?: Record<string, any>;
-  additional_attributes?: any;
-  contact_inboxes?: any; // Flexível para aceitar {} ou []
-  labels?: string[];
-  companies?: any[];
-  persons?: any[];
-  persons_count?: number;
-  company_contacts_count?: number;
-  conversations_count?: number;
-  location?: string | null;
-  country_code?: string | null;
-  last_conversation?: {
-    id: string;
-    status: string;
-    created_at: string;
-    last_activity_at: string;
-  };
-  pipelines?: any[];
-};
+// Contact is re-exported from the canonical types/contacts/contact.ts to
+// avoid two competing definitions that drift (blocked/custom_attributes
+// bugs were caused by them diverging). Use @/types/contacts or @/types/chat/api
+// — they resolve to the same type now.
+import type { Contact as CanonicalContact } from '@/types/contacts/contact';
+export type Contact = CanonicalContact;
 
 export type Label = BaseLabel;
 export type Team = BaseTeam;
@@ -259,7 +235,7 @@ export interface ConversationFilter {
 
 export interface FilterRequest {
   page?: number;
-  filters: Array<{
+  payload: Array<{
     attribute_key: string;
     filter_operator: string;
     values: unknown[];

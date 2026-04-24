@@ -165,9 +165,16 @@ export default function Integrations() {
     }
   };
 
-  const visibleIntegrations = integrations.filter(
-    integration => !(integration.id === 'openai' && openaiConfigured),
-  );
+  // Third-party integrations we don't ship in the community build. Hidden
+  // from the UI entirely — the backend still accepts them, so re-enabling
+  // is just a matter of deleting this list.
+  const HIDDEN_INTEGRATIONS = ['linear', 'hubspot', 'shopify', 'slack'];
+
+  const visibleIntegrations = integrations.filter(integration => {
+    if (integration.id === 'openai' && openaiConfigured) return false;
+    if (HIDDEN_INTEGRATIONS.includes(integration.id)) return false;
+    return true;
+  });
 
   // Filter integrations
   const filteredIntegrations = visibleIntegrations.filter(integration => {

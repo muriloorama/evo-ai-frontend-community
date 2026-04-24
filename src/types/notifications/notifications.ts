@@ -13,7 +13,7 @@ export interface Notification {
   id: string;
   notification_type: string;
   primary_actor_id: string;
-  primary_actor: { id: string } | null;
+  primary_actor: { id: string; display_id?: number | string; type?: string } | null;
   push_message_title: string;
   last_activity_at: string;
   read_at: string | null;

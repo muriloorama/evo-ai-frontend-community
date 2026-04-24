@@ -186,6 +186,8 @@ interface WebSocketHandlers {
   onConversationStatusChanged?: (conversationId: string, status: Conversation['status'], updatedAt?: string) => void;
   onConversationRead?: (conversationId: string, unreadCount: number) => void;
   onConversationLastActivity?: (conversationId: string, lastActivityAt: string) => void;
+  // contact.updated — partial Contact payload from the backend (push_event_data).
+  onContactUpdated?: (contact: { id: string } & Partial<import('@/types/contacts').Contact>) => void;
 }
 
 interface WebSocketContextValue {
@@ -391,7 +393,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
                 created_at: data.created_at,
                 updated_at: data.updated_at,
                 additional_attributes: {},
-                contact_inboxes: {},
+                contact_inboxes: [],
                 location: null,
                 country_code: null,
                 blocked: false,
@@ -484,7 +486,6 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
             return;
           }
 
-          const previewMessage = data.messages?.[0];
           const previewMessageTypeMap: Record<number | string, MessageTypeValue> = {
             0: 'incoming',
             1: 'outgoing',
@@ -495,6 +496,12 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
             activity: 'activity',
             template: 'template',
           };
+
+          const previewMessage = (data.messages ?? []).find((msg) => {
+            const resolvedType =
+              previewMessageTypeMap[msg?.message_type ?? 'incoming'] || 'incoming';
+            return resolvedType !== 'activity';
+          });
 
           const lastNonActivityMessage = previewMessage
             ? {
@@ -687,6 +694,17 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
           if (handlersRef.current.onConversationRead) {
             handlersRef.current.onConversationRead(data.id, data.unread_count || 0);
           }
+        }, []),
+
+        // contact.updated — dispatched by the backend whenever a Contact row
+        // changes (form edit, webhook, custom attribute update, etc.).
+        // Forward to the external handler so state stores (conversations
+        // reducer, contacts page) reflect the new values instantly instead
+        // of waiting for a page refresh.
+        onContactUpdated: useCallback((data: unknown) => {
+          handlersRef.current.onContactUpdated?.(
+            data as Parameters<NonNullable<WebSocketHandlers['onContactUpdated']>>[0],
+          );
         }, []),
       },
     },

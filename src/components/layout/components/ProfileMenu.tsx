@@ -1,5 +1,5 @@
-import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Shield } from 'lucide-react';
 import {
   Button,
   Avatar,
@@ -15,6 +15,7 @@ import {
 import { useLanguage } from '@/hooks/useLanguage';
 import { getProfileMenuItems } from '../config/menuItems';
 import { Role } from '@/types/auth';
+import { useAuthStore } from '@/store/authStore';
 
 interface User {
   id: string;
@@ -67,6 +68,7 @@ export default function ProfileMenu({
 }: ProfileMenuProps) {
   const { t } = useLanguage('layout');
   const navigate = useNavigate();
+  const superAdmin = useAuthStore(s => s.superAdmin);
 
   // Função para gerar iniciais do nome do usuário
   const getUserInitials = (name?: string) => {
@@ -159,7 +161,7 @@ export default function ProfileMenu({
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent align="end" className="w-64">
         <DropdownMenuLabel>
           <div className="flex items-center gap-2">
             <Avatar className="h-8 w-8">
@@ -177,6 +179,20 @@ export default function ProfileMenu({
             </div>
           </div>
         </DropdownMenuLabel>
+
+        {superAdmin && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => navigate('/super-admin/accounts')}
+              className="cursor-pointer"
+            >
+              <Shield className="h-4 w-4" />
+              <span>{t('profile.adminPanel') || 'Painel Admin'}</span>
+            </DropdownMenuItem>
+          </>
+        )}
+
         <DropdownMenuSeparator />
 
         {profileMenuItems.map(item => (

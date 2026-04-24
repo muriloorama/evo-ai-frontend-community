@@ -26,10 +26,14 @@ import {
   Trash2,
   Archive,
   Pin,
+  Lock,
+  Unlock,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Conversation } from '@/types/chat/api';
 import { useConversations } from '@/hooks/chat/useConversations';
 import { useLanguage } from '@/hooks/useLanguage';
+import { chatService } from '@/services/chat/chatService';
 
 interface ConversationActionsDropdownProps {
   conversation: Conversation | null;
@@ -56,6 +60,7 @@ const ConversationActionsDropdown: React.FC<ConversationActionsDropdownProps> = 
   const [isUpdatingPriority, setIsUpdatingPriority] = useState(false);
   const [isUpdatingPin, setIsUpdatingPin] = useState(false);
   const [isUpdatingArchive, setIsUpdatingArchive] = useState(false);
+  const [isUpdatingGroupLock, setIsUpdatingGroupLock] = useState(false);
   const [open, setOpen] = useState(false);
 
   const { t } = useLanguage('chat');
@@ -89,6 +94,31 @@ const ConversationActionsDropdown: React.FC<ConversationActionsDropdownProps> = 
 
   const isPinned = Boolean(conversation.custom_attributes?.pinned);
   const isArchived = Boolean(conversation.custom_attributes?.archived);
+  const isGroup = conversation.contact_inbox_source_id?.startsWith('GR.') ?? false;
+  const isGroupLocked = Boolean(
+    (conversation.contact?.additional_attributes as Record<string, unknown> | undefined)?.[
+      'group_locked'
+    ],
+  );
+
+  const handleToggleGroupLock = async () => {
+    setIsUpdatingGroupLock(true);
+    try {
+      const result = await chatService.toggleGroupLock(conversation.id);
+      const nowLocked = result?.data?.group_locked ?? !isGroupLocked;
+      toast.success(
+        nowLocked
+          ? t('conversationActionsDropdown.groupLocked')
+          : t('conversationActionsDropdown.groupUnlocked'),
+      );
+      setOpen(false);
+      if (onFilterReload) await onFilterReload();
+    } catch (error) {
+      console.error('Error toggling group lock:', error);
+    } finally {
+      setIsUpdatingGroupLock(false);
+    }
+  };
 
   const handlePin = async () => {
     setIsUpdatingPin(true);
@@ -333,6 +363,19 @@ const ConversationActionsDropdown: React.FC<ConversationActionsDropdownProps> = 
             ? t('conversationActionsDropdown.unarchiveConversation')
             : t('conversationActionsDropdown.archiveConversation')}
         </DropdownMenuItem>
+
+        {isGroup && (
+          <DropdownMenuItem
+            onClick={handleToggleGroupLock}
+            disabled={isUpdatingGroupLock}
+            className="flex items-center gap-2"
+          >
+            {isGroupLocked ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+            {isGroupLocked
+              ? t('conversationActionsDropdown.unlockGroup')
+              : t('conversationActionsDropdown.lockGroup')}
+          </DropdownMenuItem>
+        )}
 
         <DropdownMenuSeparator />
 

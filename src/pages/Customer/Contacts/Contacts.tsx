@@ -16,6 +16,7 @@ import EmptyState from '@/components/base/EmptyState';
 
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { contactsService } from '@/services/contacts';
+import { useContactUpdate } from '@/hooks/contacts/useContactUpdate';
 import { Contact, ContactsState, ContactsListParams, ContactFormData } from '@/types/contacts';
 import { BaseFilter, AppliedFilter } from '@/types/core';
 import { ContactCard } from '@/components/contacts';
@@ -67,8 +68,11 @@ export default function Contacts() {
   const { contactId: contactIdFromRoute } = useParams<{ contactId?: string }>();
   const navigate = useNavigate();
   const { can, isReady: permissionsReady } = useUserPermissions();
+  const { updateContact: updateContactViaHook } = useContactUpdate();
   const [state, setState] = useState<ContactsState>(INITIAL_STATE);
-  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  // Default to the denser table ("lista") view — users prefer seeing all
+  // contacts in a list instead of the card grid on first load.
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('table');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [contactToDelete, setContactToDelete] = useState<Contact | null>(null);
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
@@ -662,8 +666,11 @@ export default function Contacts() {
 
     try {
       if (editingContact) {
-        // Update existing contact
-        const updatedContact = await contactsService.updateContact(editingContact.id, data);
+        // Update via unified hook: PATCH + dispatch to conversations context + toast
+        const updatedContact = await updateContactViaHook(editingContact.id, data, {
+          silent: true,
+        });
+        if (!updatedContact) throw new Error('update failed');
         toast.success(t('messages.updateSuccess'));
 
         setState(prev => {

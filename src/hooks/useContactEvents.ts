@@ -92,7 +92,25 @@ export function useContactEvents() {
         }));
 
         return response;
-      } catch (error) {
+      } catch (error: any) {
+        const status = error?.response?.status;
+        if (status === 404) {
+          // Endpoint not implemented — show empty list without scary toast
+          setState(prev => ({
+            ...prev,
+            events: [],
+            pagination: {
+              currentPage: 1,
+              limit: 20,
+              totalItems: 0,
+              totalPages: 0,
+              hasPreviousPage: false,
+              hasNextPage: false,
+            },
+            loading: { ...prev.loading, events: false },
+          }));
+          return null;
+        }
         console.error('❌ ContactEvents: Error loading events:', error);
         toast.error('Erro ao carregar eventos do contato');
         setState(prev => ({ ...prev, loading: { ...prev.loading, events: false } }));
@@ -124,7 +142,18 @@ export function useContactEvents() {
       }));
 
       return response;
-    } catch (error) {
+    } catch (error: any) {
+      const status = error?.response?.status;
+      // Endpoint not implemented yet — degrade gracefully with empty stats
+      // instead of showing an alarming error toast.
+      if (status === 404) {
+        setState(prev => ({
+          ...prev,
+          stats: null,
+          loading: { ...prev.loading, stats: false },
+        }));
+        return null;
+      }
       console.error('❌ ContactEvents: Error loading stats:', error);
       toast.error('Erro ao carregar estatísticas de eventos');
       setState(prev => ({ ...prev, loading: { ...prev.loading, stats: false } }));

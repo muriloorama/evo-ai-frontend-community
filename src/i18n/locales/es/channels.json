@@ -7,7 +7,8 @@
   },
   "card": {
     "channelId": "Canal ID",
-    "type": "Tipo"
+    "type": "Tipo",
+    "phoneNumber": "Número"
   },
   "table": {
     "channels": "Canales",
@@ -261,6 +262,8 @@
         "facebookNotConfigured": "Facebook no está configurado",
         "instagramNotConfigured": "Instagram no está configurado",
         "whatsappNotConfigured": "WhatsApp no está configurado",
+        "whatsappNotConfiguredDescription": "Configura el App ID y el Config ID de WhatsApp Cloud en los ajustes de administrador.",
+        "configureAction": "Configurar",
         "sdkNotLoaded": "El SDK de Facebook no se cargó",
         "loginCancelled": "Inicio de sesión cancelado",
         "pageNotFound": "Página no encontrada",
@@ -612,6 +615,8 @@
         "templateType": "Tipo de Plantilla",
         "templateTypes": {
           "text": "Texto",
+          "interactive": "Interactivo",
+          "media": "Multimedia",
           "image": "Imagen",
           "video": "Video",
           "document": "Documento",
@@ -627,6 +632,7 @@
         },
         "headerFormat": "Formato del Encabezado",
         "headerFormats": {
+          "none": "Sin encabezado",
           "text": "Texto",
           "image": "Imagen",
           "video": "Video",
@@ -634,13 +640,20 @@
         },
         "headerText": "Texto del Encabezado",
         "headerTextPlaceholder": "Ingrese el texto del encabezado",
+        "headerMediaUrl": "URL de ejemplo del multimedia",
+        "headerMediaUrlHelp": "Meta requiere una URL de ejemplo del multimedia para aprobar la plantilla.",
         "bodyText": "Texto del Cuerpo",
         "bodyTextPlaceholder": "Ingrese el texto del cuerpo del mensaje",
-        "footerText": "Texto del Pie de Página",
+        "footerText": "Texto del Pie de Página (opcional)",
         "footerTextPlaceholder": "Ingrese el texto del pie de página (opcional)",
         "variablesHelp": "Use la sintaxis {{variable}} para valores dinámicos",
+        "variableExamples": "Ejemplos de las variables",
+        "variableExamplesHelp": "Meta exige un valor de ejemplo para cada variable {{...}} del cuerpo.",
+        "variableExamplePlaceholder": "Ej: Juan, $49.90, etc.",
         "buttons": "Botones",
         "addButton": "Agregar Botón",
+        "buttonsLimitReached": "Se alcanzó el límite de 3 botones.",
+        "buttonsNoEmoji": "Los emojis no se permiten en botones.",
         "buttonTypes": {
           "quickReply": "Respuesta Rápida",
           "url": "URL",
@@ -726,7 +739,10 @@
         "createError": "Error al crear plantilla",
         "updateError": "Error al actualizar plantilla",
         "deleteError": "Error al eliminar plantilla",
-        "requiredFields": "Complete todos los campos obligatorios"
+        "requiredFields": "Complete todos los campos obligatorios",
+        "headerMediaUrlRequired": "Proporcione una URL de ejemplo para el encabezado multimedia.",
+        "variableExamplesRequired": "Proporcione un valor de ejemplo para cada variable del cuerpo.",
+        "buttonsInvalid": "Revise los botones — el texto no puede estar vacío y debe tener como máximo 20 caracteres."
       },
       "success": {
         "syncSuccess": "¡Plantillas sincronizadas con éxito!",
@@ -806,6 +822,35 @@
         }
       },
       "whatsapp": {
+        "cloudCredentials": {
+          "title": "Credenciales de WhatsApp Cloud",
+          "description": "Actualiza el Phone Number ID, WABA ID y Access Token sin perder la bandeja de entrada.",
+          "editButton": "Editar",
+          "saveButton": "Guardar",
+          "cancelButton": "Cancelar",
+          "fields": {
+            "phoneNumber": "Número de teléfono",
+            "phoneNumberId": "ID del número de teléfono (Phone Number ID)",
+            "wabaId": "ID de la cuenta empresarial (WABA ID)",
+            "apiKey": "Access Token (API Key)"
+          },
+          "success": {
+            "saved": "¡Credenciales actualizadas con éxito!"
+          },
+          "errors": {
+            "missingFields": "Completa Phone Number ID, WABA ID y Access Token.",
+            "saveError": "Error al guardar las credenciales. Verifica los datos e inténtalo de nuevo."
+          },
+          "webhook": {
+            "title": "Webhook en Meta",
+            "description": "Copia estos datos y pégalos en Meta for Developers → tu App → WhatsApp → Configuration → Webhooks.",
+            "callbackUrl": "Callback URL",
+            "verifyToken": "Verify Token",
+            "urlUnavailable": "URL no disponible — guarda el canal primero",
+            "regenerate": "Generar nuevo token",
+            "regenerated": "Nuevo Verify Token generado"
+          }
+        },
         "instance": {
           "statusTitle": "Estado de la Instancia",
           "statusConnected": "Conectado",

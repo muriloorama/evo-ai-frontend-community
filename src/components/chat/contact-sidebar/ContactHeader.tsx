@@ -12,8 +12,8 @@ const ContactHeader: React.FC<ContactHeaderProps> = ({ contact }) => {
   const { t } = useLanguage('chat');
 
   return (
-    <div className="p-6 flex-shrink-0">
-      <div className="flex items-center gap-4">
+    <div className="p-4 pr-14 md:p-6 md:pr-6 flex-shrink-0">
+      <div className="flex items-center gap-3 md:gap-4">
         {/* Avatar Grande */}
         <ContactAvatar contact={contact} size="lg" />
 

@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 import usersService from '@/services/users/usersService';
 import useRoles from '@/hooks/useRoles';
 import type { User, UserFormData, UserUpdateData } from '@/types/users';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Copy, Check, Eye, EyeOff } from 'lucide-react';
 import { useLanguage } from '@/hooks/useLanguage';
 
 
@@ -46,6 +46,10 @@ export default function UserFormModal({ isOpen, onClose, user, onSuccess }: User
     confirmPassword: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
+  const [passwordCopied, setPasswordCopied] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -97,14 +101,11 @@ export default function UserFormModal({ isOpen, onClose, user, onSuccess }: User
       newErrors.email = t('form.validation.emailInvalid');
     }
 
-    if (!user) {
-      // Validações apenas para criação
-      if (!formData.password) {
-        newErrors.password = t('form.validation.passwordRequired');
-      } else if (formData.password.length < 6) {
+    if (!user && formData.password) {
+      // Criação com senha digitada pelo admin (opcional — vazia = gerada no backend).
+      if (formData.password.length < 6) {
         newErrors.password = t('form.validation.passwordMinLength');
       }
-
       if (formData.password !== formData.confirmPassword) {
         newErrors.confirmPassword = t('form.validation.passwordMismatch');
       }
@@ -150,8 +151,14 @@ export default function UserFormModal({ isOpen, onClose, user, onSuccess }: User
           confirmPassword: formData.confirmPassword,
         };
 
-        await usersService.createUser(createData);
+        const result = await usersService.createUser(createData);
         toast.success(t('form.messages.createSuccess'));
+        if (result.temporary_password) {
+          setGeneratedPassword(result.temporary_password);
+          setPasswordCopied(false);
+          onSuccess();
+          return;
+        }
       }
 
       onSuccess();
@@ -164,8 +171,72 @@ export default function UserFormModal({ isOpen, onClose, user, onSuccess }: User
     }
   };
 
+  const handleClose = () => {
+    setGeneratedPassword(null);
+    setPasswordCopied(false);
+    onClose();
+  };
+
+  const handleCopyPassword = async () => {
+    if (!generatedPassword) return;
+    try {
+      await navigator.clipboard.writeText(generatedPassword);
+      setPasswordCopied(true);
+      setTimeout(() => setPasswordCopied(false), 2000);
+    } catch {
+      toast.error('Falha ao copiar. Copie manualmente.');
+    }
+  };
+
+  if (generatedPassword) {
+    return (
+      <Dialog open={isOpen} onOpenChange={handleClose}>
+        <DialogContent className="bg-sidebar border-sidebar-border max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-sidebar-foreground">
+              Atendente criado — senha temporária
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-sidebar-foreground/80">
+              Copie a senha abaixo e envie ao atendente. Ele poderá trocá-la depois no perfil. Esta senha não será exibida novamente.
+            </p>
+            <div className="flex items-center gap-2">
+              <Input
+                readOnly
+                value={generatedPassword}
+                className="bg-sidebar border-sidebar-border text-sidebar-foreground font-mono"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleCopyPassword}
+                className="bg-sidebar hover:bg-sidebar-accent border-sidebar-border"
+              >
+                {passwordCopied ? (
+                  <Check className="h-4 w-4" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+            <div className="flex justify-end pt-2">
+              <Button
+                type="button"
+                onClick={handleClose}
+                className="bg-primary hover:bg-primary/85 text-primary-foreground border-0 font-semibold"
+              >
+                Fechar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="bg-sidebar border-sidebar-border max-w-md">
         <DialogHeader>
           <DialogTitle className="text-sidebar-foreground">
@@ -252,20 +323,35 @@ export default function UserFormModal({ isOpen, onClose, user, onSuccess }: User
             <>
               <div className="space-y-2">
                 <Label htmlFor="password">
-                  {user ? t('form.fields.password.labelOptional') : t('form.fields.password.label')}
+                  {t('form.fields.password.labelOptional')}
                 </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={formData.password}
-                  onChange={e => handleFieldChange('password', e.target.value)}
-                  placeholder={t('form.fields.password.placeholder')}
-                  className={`bg-sidebar border-sidebar-border text-sidebar-foreground ${
-                    errors.password ? 'border-red-500' : ''
-                  }`}
-                  disabled={loading}
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={formData.password}
+                    onChange={e => handleFieldChange('password', e.target.value)}
+                    placeholder={t('form.fields.password.placeholder')}
+                    className={`bg-sidebar border-sidebar-border text-sidebar-foreground pr-10 ${
+                      errors.password ? 'border-red-500' : ''
+                    }`}
+                    disabled={loading}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-sidebar-foreground/60 hover:text-sidebar-foreground"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
                 {errors.password && <p className="text-sm text-red-500">{errors.password}</p>}
+                {!user && (
+                  <p className="text-xs text-sidebar-foreground/60">
+                    Deixe em branco para o sistema gerar uma senha temporária.
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -274,17 +360,27 @@ export default function UserFormModal({ isOpen, onClose, user, onSuccess }: User
                     ? t('form.fields.confirmPassword.labelOptional')
                     : t('form.fields.confirmPassword.label')}
                 </Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  value={formData.confirmPassword}
-                  onChange={e => handleFieldChange('confirmPassword', e.target.value)}
-                  placeholder={t('form.fields.confirmPassword.placeholder')}
-                  className={`bg-sidebar border-sidebar-border text-sidebar-foreground ${
-                    errors.confirmPassword ? 'border-red-500' : ''
-                  }`}
-                  disabled={loading}
-                />
+                <div className="relative">
+                  <Input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={formData.confirmPassword}
+                    onChange={e => handleFieldChange('confirmPassword', e.target.value)}
+                    placeholder={t('form.fields.confirmPassword.placeholder')}
+                    className={`bg-sidebar border-sidebar-border text-sidebar-foreground pr-10 ${
+                      errors.confirmPassword ? 'border-red-500' : ''
+                    }`}
+                    disabled={loading}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-sidebar-foreground/60 hover:text-sidebar-foreground"
+                    tabIndex={-1}
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
                 {errors.confirmPassword && (
                   <p className="text-sm text-red-500">{errors.confirmPassword}</p>
                 )}
@@ -296,7 +392,7 @@ export default function UserFormModal({ isOpen, onClose, user, onSuccess }: User
             <Button
               type="button"
               variant="outline"
-              onClick={onClose}
+              onClick={handleClose}
               disabled={loading}
               className="bg-sidebar hover:bg-sidebar-accent border-sidebar-border"
             >
