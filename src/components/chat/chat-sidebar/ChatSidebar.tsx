@@ -957,14 +957,18 @@ const ChatSidebar = ({
                         const hasUnread = (conversations.getUnreadCount(conversation.id) || 0) > 0;
                         return (
                           <>
-                            {/* LINE 1: status badge + name + tracking + pin + post + pipeline + time.
-                                Status: pílula colorida (mesmo padrão do badge "Aberto" na tela de
-                                pipelines) — substitui o dot anterior pra dar contexto com texto. */}
+                            {/* LINE 1: [Badge fixo 72px] [Nome flex-1 truncate] [Ícones+Data ml-auto].
+                                O badge fica em coluna de largura fixa pra que o nome SEMPRE comece
+                                na mesma posição horizontal entre todos os cards (independentemente
+                                do texto do badge ser "Aberta", "Pendente" ou "Resolvida"). Quando
+                                o status é desconhecido, o slot fica vazio mas mantém os 72px. */}
                             <div className="flex items-center gap-1.5 min-w-0">
-                              <ConversationStatusBadge
-                                status={conversation.status}
-                                hideUnknown
-                              />
+                              <div className="w-[72px] flex-shrink-0 flex items-center">
+                                <ConversationStatusBadge
+                                  status={conversation.status}
+                                  hideUnknown
+                                />
+                              </div>
                               <p className="truncate min-w-0 flex-1 text-[15px] md:text-sm font-semibold text-foreground">
                                 {conversation.contact?.name || t('chatSidebar.contactNoName')}
                               </p>
