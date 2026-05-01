@@ -1,4 +1,5 @@
 import { Button } from '@evoapi/design-system/button';
+import { Badge } from '@evoapi/design-system/badge';
 import {
   ArrowLeft,
   X,
@@ -17,7 +18,7 @@ import {
   Trash2,
   Mail,
   MailOpen,
-  Unlock,
+  Inbox,
   Pin,
   Archive,
   IdCard,
@@ -96,7 +97,12 @@ const ChatHeader = ({
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-10 w-10 md:h-8 md:w-8 p-0">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-10 w-10 md:h-8 md:w-8 p-0"
+            aria-label="Mais ações"
+          >
             <MoreVertical className="h-5 w-5 md:h-4 md:w-4" />
           </Button>
         </DropdownMenuTrigger>
@@ -289,6 +295,7 @@ const ChatHeader = ({
             size="sm"
             className="md:hidden h-10 w-10 p-0 -ml-1 flex-shrink-0"
             onClick={onBackClick}
+            aria-label="Voltar"
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
@@ -299,7 +306,7 @@ const ChatHeader = ({
             <ContactAvatar contact={conversation.contact} />
           </div>
           <div className="min-w-0 flex-1">
-            <h3 className="font-semibold text-sm md:text-base truncate">
+            <h3 className="text-base font-semibold text-foreground truncate">
               {conversation.contact?.name || t('chatHeader.contactNoName')}
             </h3>
             <div className="flex items-center gap-1.5 md:gap-2 text-xs md:text-sm text-muted-foreground flex-wrap">
@@ -310,9 +317,16 @@ const ChatHeader = ({
                   <span className="hidden md:inline">•</span>
                 </>
               )}
-              <span className="truncate">
-                {getStatusLabel(conversation.status)}
-              </span>
+              {isPendingStatus(conversation.status) ? (
+                <Badge
+                  variant="outline"
+                  className="h-5 px-1.5 text-[11px] font-medium bg-warning/10 text-warning border-warning/20"
+                >
+                  {getStatusLabel(conversation.status)}
+                </Badge>
+              ) : (
+                <span className="truncate">{getStatusLabel(conversation.status)}</span>
+              )}
               {/* Pipeline stages: limitar exibição no mobile */}
               {conversation.pipelines?.flatMap((pipeline) =>
                 pipeline.stages.map((stage) => (
@@ -335,16 +349,20 @@ const ChatHeader = ({
         </div>
         {/* Ações do chat */}
         <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
-          {/* Botão abrir conversa pendente — mais enxuto no mobile (só ícone) */}
+          {/* Botão "Abrir Conversa" — visível só quando status === 'pending'.
+              Usa o handler onMarkAsOpen (mesmo do dropdown) para mover a
+              conversa de pending → open. Variante default (preenchido) para
+              chamar atenção, à esquerda do botão "Contato". */}
           {isPendingStatus(conversation.status) && (
             <Button
-              variant="plain"
+              variant="default"
               size="sm"
               onClick={() => onMarkAsOpen(conversation)}
-              className="flex items-center gap-2 h-10 w-10 md:w-auto md:px-3 p-0 md:p-2 text-primary hover:text-primary/80 hover:bg-primary/10 transition-all duration-200"
+              className="flex items-center gap-2 h-10 md:h-8 w-10 md:w-auto md:px-3 p-0 md:p-2 transition-all duration-200"
               title={t('chatHeader.openConversation')}
+              aria-label={t('chatHeader.openConversation')}
             >
-              <Unlock className="h-5 w-5 md:h-4 md:w-4" />
+              <Inbox className="h-5 w-5 md:h-4 md:w-4" />
               <span className="hidden md:inline">{t('chatHeader.openConversation')}</span>
             </Button>
           )}
@@ -356,6 +374,7 @@ const ChatHeader = ({
             onClick={onContactSidebarOpen}
             className="flex items-center justify-center gap-1.5 h-10 w-10 md:h-8 md:w-auto md:px-2.5 p-0 md:p-2 text-primary border-primary/30 hover:bg-primary/10 hover:text-primary hover:border-primary/50"
             title="Abrir detalhes do contato"
+            aria-label="Abrir detalhes do contato"
           >
             <IdCard className="h-5 w-5 md:h-3.5 md:w-3.5" />
             <span className="hidden md:inline">Contato</span>
@@ -370,6 +389,7 @@ const ChatHeader = ({
             size="sm"
             onClick={onCloseConversation}
             className="hidden md:inline-flex text-muted-foreground hover:text-foreground"
+            aria-label={t('chatHeader.closeConversation')}
           >
             <X className="h-4 w-4" />
             <span className="sr-only">{t('chatHeader.closeConversation')}</span>

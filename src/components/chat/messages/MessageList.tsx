@@ -593,6 +593,48 @@ const MessageList: React.FC<MessageListProps> = ({
               // Get moderation for this message
               const moderation = messageModerations?.get(message.id);
 
+              // Agrupamento visual: mensagem é considerada consecutiva quando
+              // a anterior (regular, não system) tem o mesmo sender_id e foi
+              // enviada há menos de 5min. Reduz o espaço vertical entre bolhas
+              // do mesmo remetente para criar grupos visuais como WhatsApp.
+              const FIVE_MINUTES_S = 5 * 60;
+              let isConsecutive = false;
+              if (index > 0) {
+                // Buscar a anterior REGULAR (skipping system messages)
+                let prev: Message | null = null;
+                for (let i = index - 1; i >= 0; i--) {
+                  const candidate = allOrderedMessages[i];
+                  if (
+                    candidate.message_type === MESSAGE_TYPE.ACTIVITY ||
+                    candidate.message_type === MESSAGE_TYPE.TEMPLATE
+                  ) {
+                    continue;
+                  }
+                  prev = candidate;
+                  break;
+                }
+                if (prev) {
+                  // Mensagens system/anônimas não devem agrupar entre si:
+                  // se algum dos sender_ids for null/undefined, NÃO consideramos
+                  // consecutivo. O `message_type` deixou de fazer parte da
+                  // regra (bot e agente já têm sender_ids distintos, então
+                  // exigir igualdade aqui causava falsos negativos quando
+                  // o mesmo bot enviava mensagens em sequência).
+                  const a = prev.sender?.id ?? null;
+                  const b = message.sender?.id ?? null;
+                  const samePrevSender = a !== null && b !== null && a === b;
+                  const dt = getMessageTimestamp(message) - getMessageTimestamp(prev);
+                  if (
+                    Number.isFinite(dt) &&
+                    samePrevSender &&
+                    dt >= 0 &&
+                    dt < FIVE_MINUTES_S
+                  ) {
+                    isConsecutive = true;
+                  }
+                }
+              }
+
               return (
                 <div key={`${message.id}-${index}`} data-message-id={message.id}>
                   {/* AdReferralBadge removido: o ícone Instagram/Meta já
@@ -609,6 +651,8 @@ const MessageList: React.FC<MessageListProps> = ({
                     allMessages={messages}
                     isPostConversation={isPostConversation}
                     moderation={moderation}
+                    isConsecutive={isConsecutive}
+                    isFirst={index === 0}
                     onRetry={() => onRetryMessage(message.id)}
                     onReply={onReplyToMessage}
                     onCopy={onCopyMessage}

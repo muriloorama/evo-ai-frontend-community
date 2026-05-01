@@ -48,8 +48,49 @@ import { NoConversations } from '../empty-states';
 import ContactAvatar from '../contact/ContactAvatar';
 import ContactTagsList from '@/components/contacts/ContactTagsList';
 import ConversationsFilter from '../conversation/ConversationsFilter';
+import DensityToggle from './DensityToggle';
 import { BaseFilter } from '@/types/core';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useDensity } from '@/hooks/useDensity';
+import { useConversationKeyboardNav } from '@/hooks/useConversationKeyboardNav';
+
+// Labels exibidos nos chips de filtros ativos. Definido em escopo de módulo
+// para não recriar o objeto a cada render do ChatSidebar.
+const FILTER_LABELS: Record<string, string> = {
+  status: 'Status',
+  assignee_type: 'Atendente',
+  inbox_id: 'Caixa',
+  channel_type: 'Canal',
+  team_id: 'Time',
+  labels: 'Etiqueta',
+  created_at: 'Criada em',
+  last_activity_at: 'Última atividade',
+  priority: 'Prioridade',
+  pipeline_id: 'Funil',
+};
+
+// Constrói o label do chip a partir do ConversationFilter. Top-level porque
+// não depende do estado do componente — só do filtro recebido.
+const formatFilterChipLabel = (filter: ConversationFilter): string => {
+  const key = FILTER_LABELS[filter.attribute_key] || filter.attribute_key;
+  const rawValues = Array.isArray(filter.values) ? filter.values : [filter.values];
+  const valueText = rawValues
+    .map(v => (v === null || v === undefined ? '' : String(v)))
+    .filter(Boolean)
+    .join(', ');
+  return valueText ? `${key}: ${valueText}` : key;
+};
+
+// Normaliza `values` (que pode vir como array, primitivo ou null) para a string
+// esperada pelo BaseFilter da UI. Antes, o código usava
+// `Array.isArray(v) ? v.join(',') : String(v[0] || '')`, o que tratava strings
+// como arrays e retornava só o PRIMEIRO CARACTERE. Aqui o caso primitivo é
+// tratado corretamente.
+const normalizeFilterValues = (values: unknown): string => {
+  if (Array.isArray(values)) return values.join(',');
+  if (values == null) return '';
+  return String(values);
+};
 
 interface ChatSidebarProps {
   mobileView: 'list' | 'chat';
@@ -127,7 +168,17 @@ const ChatSidebar = ({
   const [isLoadingMoreConversations, setIsLoadingMoreConversations] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const sidebarScrollRef = useRef<HTMLDivElement | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const loadingMoreRef = useRef(false);
+
+  // Densidade visual da lista (compact | comfortable). Persistida em localStorage.
+  const [density, setDensity] = useDensity();
+
+  // Detecta plataforma para mostrar o atalho correto (⌘ no mac, Ctrl em outros)
+  const isMacPlatform = useMemo(() => {
+    if (typeof navigator === 'undefined') return false;
+    return /Mac|iPhone|iPad|iPod/.test(navigator.platform);
+  }, []);
 
   // ðŸŽ¯ SYNC: Sincronizar local state com FiltersContext para compatibilidade com o modal
   useEffect(() => {
@@ -139,7 +190,7 @@ const ChatSidebar = ({
       filters.state.activeFilters.map((f: ConversationFilter) => ({
         attributeKey: f.attribute_key,
         filterOperator: f.filter_operator,
-        values: Array.isArray(f.values) ? f.values.join(',') : String(f.values[0] || ''),
+        values: normalizeFilterValues(f.values),
         queryOperator: f.query_operator,
         attributeModel: 'standard' as const,
       })),
@@ -150,7 +201,7 @@ const ChatSidebar = ({
         filters.state.activeFilters.map((f: ConversationFilter) => ({
           attributeKey: f.attribute_key,
           filterOperator: f.filter_operator,
-          values: Array.isArray(f.values) ? f.values.join(',') : String(f.values[0] || ''),
+          values: normalizeFilterValues(f.values),
           queryOperator: f.query_operator,
           attributeModel: 'standard' as const,
         })),
@@ -175,6 +226,30 @@ const ChatSidebar = ({
     setConversationFilters([]);
     onFilterClear();
   };
+
+  // Remove um filtro ativo específico via chip. Aplica imediatamente o
+  // estado restante (ou limpa quando vazio) usando o mesmo handler de
+  // applyFilters/clearFilters do contexto.
+  const handleRemoveFilter = useCallback(
+    (index: number) => {
+      const currentApi = filters.state.activeFilters;
+      const nextApi = currentApi.filter((_, i) => i !== index);
+      const nextUi: BaseFilter[] = nextApi.map((f: ConversationFilter) => ({
+        attributeKey: f.attribute_key,
+        filterOperator: f.filter_operator,
+        values: normalizeFilterValues(f.values),
+        queryOperator: f.query_operator,
+        attributeModel: 'standard' as const,
+      }));
+      setConversationFilters(nextUi);
+      if (nextUi.length === 0) {
+        onFilterClear();
+      } else {
+        onFilterApply(nextUi);
+      }
+    },
+    [filters.state.activeFilters, onFilterApply, onFilterClear],
+  );
 
   const pagination = conversations.state.conversationsPagination;
   const currentPage = pagination?.page || 1;
@@ -253,6 +328,25 @@ const ChatSidebar = ({
       return getSortTimestamp(b) - getSortTimestamp(a);
     });
   }, [conversations.state.conversations, showArchived]);
+
+  // Navegação por teclado global: Ctrl+K/⌘K foca a busca, ↑↓ percorrem
+  // a lista visível e Enter abre a conversa focada. O hook é responsável
+  // por mover o foco no DOM via `data-conversation-id`.
+  //
+  // TODO: Quando estivermos em viewport mobile (sm:) E `mobileView === 'chat'`,
+  // o sidebar fica oculto (`hidden md:flex`) e os atalhos não fazem sentido —
+  // o ideal é passar `enabled: false`. No desktop o sidebar é sempre visível
+  // (regra `md:flex`), então uma verificação só por `mobileView` quebraria
+  // desktop. Implementar quando tivermos um hook de breakpoint disponível
+  // (ex: useMediaQuery). Por ora deixamos `enabled: true` — o hook já é
+  // self-guard contra modais e edits in-progress.
+  useConversationKeyboardNav({
+    conversations: visibleConversations,
+    onSelect: onConversationSelect,
+    searchInputRef,
+    selectedConversationId: conversations.state.selectedConversationId,
+    enabled: true,
+  });
 
   const stripHtml = (html: string): string => {
     if (!html) return '';
@@ -615,7 +709,8 @@ const ChatSidebar = ({
       data-tour="chat-sidebar"
       className={`
         ${mobileView === 'list' ? 'flex' : 'hidden'} md:flex
-        w-full md:w-80 border-r bg-card/50 flex-col h-full
+        w-full md:w-80 lg:max-[1399px]:w-[280px] min-[1400px]:w-[340px]
+        border-r bg-card/50 flex-col h-full
       `}
     >
       {/* Search and Filter Header */}
@@ -624,6 +719,7 @@ const ChatSidebar = ({
         <div className="relative" data-tour="chat-search">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
           <Input
+            ref={searchInputRef}
             type="text"
             inputMode="search"
             enterKeyHint="search"
@@ -633,8 +729,17 @@ const ChatSidebar = ({
             placeholder={t('chatSidebar.searchPlaceholder')}
             value={searchInput}
             onChange={e => handleSearchChange(e.target.value)}
-            className="pl-10 h-11 md:h-9 text-base md:text-sm"
+            aria-label={t('chatSidebar.searchPlaceholder')}
+            className="pl-10 pr-16 h-11 md:h-9 text-base md:text-sm"
           />
+          {/* Hint visual do atalho Ctrl+K / ⌘K — escondido no mobile (sem teclado) */}
+          <kbd
+            className="hidden md:inline-flex absolute right-2 top-1/2 -translate-y-1/2 items-center gap-0.5 px-1.5 h-5 text-[10px] font-medium text-muted-foreground bg-muted border border-border rounded pointer-events-none select-none"
+            aria-hidden
+          >
+            {isMacPlatform ? '⌘' : 'Ctrl'}
+            <span>K</span>
+          </kbd>
         </div>
 
         <div className="flex items-center gap-2">
@@ -669,15 +774,10 @@ const ChatSidebar = ({
               : t('chatSidebar.conversations')}
           </span>
           <div className="flex items-center gap-2">
-            {/* Indicador de filtros ativos */}
-            {filters.state.activeFilters.length > 0 && (
-              <Badge variant="secondary" className="text-xs">
-                {filters.state.activeFilters.length}{' '}
-                {filters.state.activeFilters.length === 1
-                  ? t('chatSidebar.filter')
-                  : t('chatSidebar.filters')}
-              </Badge>
-            )}
+            {/* Toggle de densidade — só desktop */}
+            <div className="hidden md:flex">
+              <DensityToggle density={density} onChange={setDensity} />
+            </div>
 
             {/* Botão de filtros */}
             <Button
@@ -687,12 +787,43 @@ const ChatSidebar = ({
               disabled={filters.state.isApplyingFilters}
               className="h-10 md:h-8 px-3 md:px-2 cursor-pointer"
               data-tour="chat-filter-button"
+              aria-label={t('chatSidebar.filtersButton')}
             >
               <Filter className="h-4 w-4" />
               <span className="hidden md:inline">{t('chatSidebar.filtersButton')}</span>
             </Button>
           </div>
         </div>
+
+        {/* Chips de filtros ativos — clicáveis para remover individualmente.
+            Cada chip mostra o label do filtro (ex: "Status: open") e um X que
+            chama handleRemoveFilter. Quando o último é removido, o container
+            some automaticamente. */}
+        {filters.state.activeFilters.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {filters.state.activeFilters.map((filter: ConversationFilter, idx: number) => {
+              const label = formatFilterChipLabel(filter);
+              return (
+                <Badge
+                  key={`${filter.attribute_key}-${filter.query_operator ?? 'and'}-${idx}`}
+                  variant="secondary"
+                  className="flex items-center gap-1 pl-2 pr-1 py-0.5 text-[11px] font-medium max-w-full"
+                >
+                  <span className="truncate max-w-[180px]">{label}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveFilter(idx)}
+                    className="inline-flex items-center justify-center h-4 w-4 rounded-full hover:bg-foreground/10 transition-colors"
+                    aria-label={`Remover filtro ${label}`}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              );
+            })}
+          </div>
+        )}
+
         {showArchived && (
           <p className="text-xs text-muted-foreground">{t('chatSidebar.archivedNotice')}</p>
         )}
@@ -704,6 +835,8 @@ const ChatSidebar = ({
         className="flex-1 overflow-y-auto"
         onScroll={handleSidebarScroll}
         data-tour="chat-conversations-list"
+        role="listbox"
+        aria-label="Lista de conversas"
       >
         {!conversations ? (
           <ConversationSkeleton count={8} />
@@ -744,7 +877,7 @@ const ChatSidebar = ({
           </div>
         ) : (
           <>
-            {visibleConversations.map((conversation: Conversation) => {
+            {visibleConversations.map((conversation: Conversation, index: number) => {
               const isSelected =
                 String(conversations.state.selectedConversationId) === String(conversation.id);
 
@@ -755,14 +888,25 @@ const ChatSidebar = ({
 
               const stagePipelineInfo = getPipelineInfo(conversation);
 
+              const desktopPadding = density === 'compact' ? 'md:py-2' : 'md:py-3.5';
+              // Quando nenhuma conversa está selecionada, o primeiro item da
+              // lista deve ser focável via Tab — caso contrário, todos ficam
+              // tabIndex={-1} e o usuário de teclado não consegue entrar na
+              // listbox sem usar Ctrl+K primeiro.
+              const isFocusable =
+                isSelected || (!conversations.state.selectedConversationId && index === 0);
               return renderConversationContextMenu(
                 conversation,
                 <div
                   key={conversation.id}
-                  className={`relative px-3 py-3 md:py-1.5 min-h-[64px] md:min-h-0 hover:bg-accent active:bg-accent cursor-pointer transition-colors touch-manipulation ${
+                  data-conversation-id={conversation.id}
+                  role="option"
+                  aria-selected={isSelected}
+                  tabIndex={isFocusable ? 0 : -1}
+                  className={`relative px-3 py-3 ${desktopPadding} min-h-[64px] md:min-h-0 cursor-pointer touch-manipulation outline-none transition-colors duration-150 hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:ring-2 focus-visible:ring-primary/40 ${
                     isSelected
-                      ? 'bg-primary/10 border-l-2 border-l-primary'
-                      : 'border-b border-border/50'
+                      ? 'bg-primary/10 border-l-[3px] border-l-primary'
+                      : 'border-b border-border/40'
                   }`}
                   onClick={() => onConversationSelect(conversation)}
                 >
@@ -780,7 +924,7 @@ const ChatSidebar = ({
                       contact={conversation.contact}
                       channelType={channelType}
                       channelProvider={channelProvider}
-                      className="!h-12 !w-12 md:!h-10 md:!w-10"
+                      className="!h-12 !w-12 md:!h-11 md:!w-11"
                     />
                     <div className="min-w-0 flex-1 flex flex-col gap-0.5">
                       {(() => {
@@ -817,7 +961,7 @@ const ChatSidebar = ({
                                   />
                                 );
                               })()}
-                              <p className={`font-medium truncate min-w-0 flex-1 text-[15px] md:text-sm ${hasUnread ? 'font-semibold' : ''}`}>
+                              <p className="truncate min-w-0 flex-1 text-[15px] md:text-sm font-semibold text-foreground">
                                 {conversation.contact?.name || t('chatSidebar.contactNoName')}
                               </p>
                               {conversation.tracking_source?.source_type === 'instagram_ad' && (
@@ -878,7 +1022,7 @@ const ChatSidebar = ({
                             </div>
 
                             {/* LINE 2: direction + preview + (desktop: assignee) + priority + (desktop: days) + unread */}
-                            <div className="flex items-center gap-1.5 min-w-0 text-[13px] md:text-xs text-muted-foreground">
+                            <div className="flex items-center gap-1.5 min-w-0 text-[13px] md:text-[13px] text-muted-foreground">
                               <div className="flex items-center gap-1 min-w-0 flex-1">
                                 {renderDirectionIcon(conversation)}
                                 <div className={`truncate min-w-0 ${hasUnread ? 'text-foreground font-medium' : ''}`}>

@@ -46,6 +46,18 @@ interface MessageBubbleProps {
   isThreadReply?: boolean;
   isFacebookStyle?: boolean; // Estilo Facebook (tudo à esquerda, bubble simples)
   moderation?: FacebookCommentModeration; // Moderation data for this message
+  /**
+   * Quando true, indica que a mensagem é consecutiva à anterior (mesmo
+   * sender_id, dentro da janela de 5min). Usado para reduzir o espaçamento
+   * vertical entre as bolhas. Default false.
+   */
+  isConsecutive?: boolean;
+  /**
+   * Quando true, indica que esta é a PRIMEIRA mensagem renderizada na lista.
+   * Usado para zerar o margin-top — caso contrário a primeira bolha herda
+   * `mt-4` e cria um gap superior visualmente quebrado. Default false.
+   */
+  isFirst?: boolean;
   onRetry?: () => void;
   onReply?: (message: Message) => void;
   onCopy?: (message: Message) => void;
@@ -66,6 +78,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   isThreadReply = false,
   isFacebookStyle = false,
   moderation,
+  isConsecutive = false,
+  isFirst = false,
   onRetry,
   onReply,
   onCopy,
@@ -340,7 +354,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         <div className="mb-1">
           {renderContextMenu(
             <div
-              className={`rounded-lg px-3 py-1.5 ${isDeleted ? 'cursor-default' : 'cursor-pointer'} ${isPrivate
+              className={`rounded-lg px-3 py-1.5 break-words ${isDeleted ? 'cursor-default' : 'cursor-pointer'} ${isPrivate
                 ? 'bg-orange-50 border border-orange-200 dark:bg-orange-950/20 dark:border-orange-800/50'
                 : 'bg-muted/50 hover:bg-muted/70 border border-border/50'
                 }`}
@@ -427,8 +441,23 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   }
 
   // Regular messages (incoming/outgoing/bot) - estilo padrão
+  // Espaçamento vertical: thread replies usam mb-1; demais agora usam mt-* baseado em isConsecutive.
+  // Quando consecutivo (mesmo remetente em < 5min), apenas 4px (mt-1) — agrupa visualmente.
+  // Quando isolado, 16px (mt-4) para separar grupos. Quando é a primeira mensagem
+  // da lista, zera (mt-0) para não criar gap superior. Mantém comportamento prévio
+  // (mb-4) como fallback quando isConsecutive é false (mt-4 ≈ mb-4 visual entre vizinhos).
   return (
-    <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'} ${isThreadReply ? 'mb-1' : 'mb-4'}`}>
+    <div
+      className={`flex ${isOwn ? 'justify-end' : 'justify-start'} ${
+        isThreadReply
+          ? 'mb-1'
+          : isFirst
+            ? 'mt-0'
+            : isConsecutive
+              ? 'mt-1'
+              : 'mt-4'
+      }`}
+    >
       {/* 👤 Avatar: REMOVIDO - não mostrar avatar nas mensagens */}
       {/* {!isOwn && showAvatar && !isThreadReply && (
         <Avatar className="w-8 h-8 mr-2 flex-shrink-0">
@@ -451,7 +480,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         </div>
       )}
 
-      <div className={`${isThreadReply ? 'max-w-[calc(85%-2rem)] md:max-w-[calc(70%-2rem)]' : 'max-w-[85%] md:max-w-[70%]'} ${isOwn ? 'ml-auto' : ''}`}>
+      <div className={`${isThreadReply ? 'max-w-[calc(60ch-2rem)]' : 'max-w-[60ch]'} ${isOwn ? 'ml-auto' : ''}`}>
         {/* 📛 Nome: mostrar apenas para contatos (lado esquerdo) - sempre mostrar em replies */}
         {!isOwn && (isThreadReply || !showAvatar) && (
           <div className="text-xs mb-1 flex items-center gap-1.5 text-muted-foreground">
@@ -491,7 +520,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 
         {renderContextMenu(
           <div
-            className={`rounded-lg px-3 py-2 ${isDeleted ? 'cursor-default' : 'cursor-pointer'} ${isThreadReply
+            className={`rounded-lg px-3 py-2 break-words ${isDeleted ? 'cursor-default' : 'cursor-pointer'} ${isThreadReply
               ? 'rounded-tl-md' // Canto superior esquerdo mais suave para replies
               : ''
               } ${isPrivate
@@ -499,7 +528,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                 : isFromAgent
                   ? 'bg-primary text-primary-foreground hover:bg-primary/85'
                   : isFromBot
-                    ? 'bg-purple-600 text-white dark:bg-purple-700'
+                    ? 'bg-purple-600/90 text-white dark:bg-purple-700/90'
                     : isOwn
                       ? 'bg-primary text-primary-foreground hover:bg-primary/85'
                       : isThreadReply
