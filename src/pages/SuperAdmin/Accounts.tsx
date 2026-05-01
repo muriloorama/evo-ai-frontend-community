@@ -8,7 +8,11 @@ import {
   DialogTitle,
   DialogFooter,
   Input,
-  Label
+  Label,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
 } from '@evoapi/design-system';
 import { Plus, Users, Pencil } from 'lucide-react';
 import {
@@ -18,24 +22,99 @@ import {
   AdminAccount,
   CreateAccountPayload
 } from '@/services/admin/adminService';
+import {
+  AccountFeatureSnapshot,
+  DEFAULT_SNAPSHOT,
+  AccountLimits,
+  AccountAi,
+  AccountChannels,
+  AccountFeatureFlags
+} from '@/types/admin/accounts';
+import {
+  LimitsTab,
+  AiTab,
+  ChannelsTab,
+  FeaturesTab
+} from '@/components/superadmin/account-form';
 
 type DialogMode =
   | { kind: 'closed' }
   | { kind: 'create' }
   | { kind: 'edit'; accountId: string };
 
-const EMPTY_FORM: CreateAccountPayload & { status?: string } = {
+type AccountFormState = {
+  // Aba "Geral" — campos básicos.
+  name: string;
+  domain: string;
+  support_email: string;
+  locale: string;
+  status: 'active' | 'suspended' | 'archived';
+  // Abas "Limites" / "AI" / "Canais" / "Funcionalidades" — slices do snapshot.
+  limits: AccountLimits;
+  ai: AccountAi;
+  channels: AccountChannels;
+  features: AccountFeatureFlags;
+};
+
+const blankForm = (): AccountFormState => ({
   name: '',
   domain: '',
   support_email: '',
   locale: 'pt-BR',
-  status: 'active'
+  status: 'active',
+  limits:   { ...DEFAULT_SNAPSHOT.limits },
+  ai:       { ...DEFAULT_SNAPSHOT.ai },
+  channels: { ...DEFAULT_SNAPSHOT.channels },
+  features: { ...DEFAULT_SNAPSHOT.features }
+});
+
+// Hidrata o form usando o snapshot que vem do backend (defaults + overrides
+// já mergados). Isso garante que workspaces sem overrides aparecem com
+// todos os toggles ligados — alinhado com a regra "defaults = TUDO LIBERADO".
+const hydrateFromAccount = (acc: AdminAccount): AccountFormState => {
+  const snap: AccountFeatureSnapshot = acc.feature_snapshot ?? DEFAULT_SNAPSHOT;
+  return {
+    name:          acc.name,
+    domain:        acc.domain || '',
+    support_email: acc.support_email || '',
+    locale:        acc.locale || 'pt-BR',
+    status:        (acc.status as AccountFormState['status']) || 'active',
+    limits:        { ...DEFAULT_SNAPSHOT.limits,   ...snap.limits },
+    ai:            { ...DEFAULT_SNAPSHOT.ai,       ...snap.ai },
+    channels:      { ...DEFAULT_SNAPSHOT.channels, ...snap.channels },
+    features:      { ...DEFAULT_SNAPSHOT.features, ...snap.features }
+  };
 };
+
+// Monta o payload final no formato esperado pelo Account model:
+//   features = { features: {...}, ai: {...}, channels: {...} }
+//   settings = { limits: {...} }
+// (essa separação espelha a convenção do Account no auth-service: o
+//  primeiro JSONB carrega os toggles, o segundo carrega caps numéricos).
+const buildPayload = (form: AccountFormState): Partial<CreateAccountPayload> => ({
+  name:          form.name.trim(),
+  domain:        form.domain?.trim() || undefined,
+  support_email: form.support_email?.trim() || undefined,
+  locale:        form.locale?.trim() || undefined,
+  status:        form.status?.trim() || undefined,
+  features: {
+    features: form.features,
+    ai:       form.ai,
+    channels: form.channels
+  },
+  settings: {
+    limits: form.limits
+  }
+});
+
+const TAB_VALUES = ['general', 'limits', 'ai', 'channels', 'features'] as const;
+type TabValue = typeof TAB_VALUES[number];
 
 /**
  * Super-admin console — lists every account on the platform and lets the
- * operator create a new one. Gated by SuperAdminRoute. Backed by the Auth
- * service's /api/v1/admin/accounts endpoints (Fase 3.2).
+ * operator create / edit one (limits, AI, channels, product features).
+ * Gated by SuperAdminRoute. Backed by the Auth service's
+ * /api/v1/admin/accounts endpoints.
  */
 export default function SuperAdminAccounts() {
   const navigate = useNavigate();
@@ -45,23 +124,20 @@ export default function SuperAdminAccounts() {
 
   const [dialogMode, setDialogMode] = useState<DialogMode>({ kind: 'closed' });
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState<CreateAccountPayload & { status?: string }>(EMPTY_FORM);
+  const [form, setForm] = useState<AccountFormState>(blankForm);
+  const [activeTab, setActiveTab] = useState<TabValue>('general');
   const [formError, setFormError] = useState<string | null>(null);
 
   const openCreate = () => {
-    setForm(EMPTY_FORM);
+    setForm(blankForm());
+    setActiveTab('general');
     setFormError(null);
     setDialogMode({ kind: 'create' });
   };
 
   const openEdit = (acc: AdminAccount) => {
-    setForm({
-      name:          acc.name,
-      domain:        acc.domain || '',
-      support_email: acc.support_email || '',
-      locale:        acc.locale || 'pt-BR',
-      status:        acc.status || 'active'
-    });
+    setForm(hydrateFromAccount(acc));
+    setActiveTab('general');
     setFormError(null);
     setDialogMode({ kind: 'edit', accountId: acc.id });
   };
@@ -74,8 +150,9 @@ export default function SuperAdminAccounts() {
     try {
       const data = await listAccounts();
       setAccounts(data);
-    } catch (err: any) {
-      setError(err?.response?.data?.error?.message || 'Falha ao carregar accounts');
+    } catch (err) {
+      const e = err as { response?: { data?: { error?: { message?: string } } } };
+      setError(e?.response?.data?.error?.message || 'Falha ao carregar accounts');
     } finally {
       setLoading(false);
     }
@@ -86,18 +163,13 @@ export default function SuperAdminAccounts() {
   const handleSubmit = async () => {
     if (!form.name.trim()) {
       setFormError('Nome é obrigatório');
+      setActiveTab('general');
       return;
     }
     setSaving(true);
     setFormError(null);
 
-    const payload: Partial<CreateAccountPayload & { status?: string }> = {
-      name:          form.name.trim(),
-      domain:        form.domain?.trim() || undefined,
-      support_email: form.support_email?.trim() || undefined,
-      locale:        form.locale?.trim() || undefined,
-      status:        form.status?.trim() || undefined
-    };
+    const payload = buildPayload(form);
 
     try {
       if (dialogMode.kind === 'edit') {
@@ -107,10 +179,20 @@ export default function SuperAdminAccounts() {
       }
       closeDialog();
       await load();
-    } catch (err: any) {
-      const details = err?.response?.data?.error?.details;
+    } catch (err) {
+      const e = err as {
+        response?: {
+          data?: {
+            error?: {
+              message?: string;
+              details?: Array<{ full_messages?: string[] }>;
+            };
+          };
+        };
+      };
+      const details = e?.response?.data?.error?.details;
       const firstDetail = Array.isArray(details) && details[0]?.full_messages?.[0];
-      setFormError(firstDetail || err?.response?.data?.error?.message || 'Falha ao salvar workspace');
+      setFormError(firstDetail || e?.response?.data?.error?.message || 'Falha ao salvar workspace');
     } finally {
       setSaving(false);
     }
@@ -218,86 +300,157 @@ export default function SuperAdminAccounts() {
       </div>
 
       <Dialog open={dialogMode.kind !== 'closed'} onOpenChange={(open) => !open && closeDialog()}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle>
               {dialogMode.kind === 'edit' ? 'Editar workspace' : 'Novo workspace'}
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 py-2">
-            <div>
-              <Label htmlFor="acc-name">Nome *</Label>
-              <Input
-                id="acc-name"
-                value={form.name}
-                onChange={e => setForm({ ...form, name: e.target.value })}
-                placeholder="Nome do cliente"
-              />
-            </div>
-            <div>
-              <Label htmlFor="acc-domain">Domain (opcional)</Label>
-              <Input
-                id="acc-domain"
-                value={form.domain}
-                onChange={e => setForm({ ...form, domain: e.target.value })}
-                placeholder="cliente.atendai.pro"
-              />
-            </div>
-            <div>
-              <Label htmlFor="acc-email">E-mail de suporte</Label>
-              <Input
-                id="acc-email"
-                type="email"
-                value={form.support_email}
-                onChange={e => setForm({ ...form, support_email: e.target.value })}
-                placeholder="suporte@cliente.com"
-              />
-            </div>
-            <div>
-              <Label htmlFor="acc-locale">Locale</Label>
-              <Input
-                id="acc-locale"
-                value={form.locale}
-                onChange={e => setForm({ ...form, locale: e.target.value })}
-                placeholder="pt-BR"
-              />
-            </div>
-            {dialogMode.kind === 'edit' && (
-              <div>
-                <Label>Status</Label>
-                <div className="flex gap-2 mt-1.5">
-                  {['active', 'suspended', 'archived'].map(s => {
-                    const checked = form.status === s;
-                    return (
-                      <label
-                        key={s}
-                        className={
-                          'flex-1 text-center py-2 px-3 border rounded-md cursor-pointer capitalize text-sm ' +
-                          (checked ? 'border-primary bg-primary/5 font-medium' : 'border-border hover:bg-accent')
-                        }
-                      >
-                        <input
-                          type="radio"
-                          name="status"
-                          value={s}
-                          checked={checked}
-                          onChange={() => setForm({ ...form, status: s })}
-                          className="sr-only"
-                        />
-                        {s === 'active' ? 'Ativo' : s === 'suspended' ? 'Suspenso' : 'Arquivado'}
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-            {formError && (
-              <div className="text-sm text-destructive">{formError}</div>
-            )}
-          </div>
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabValue)} className="flex-1 overflow-hidden flex flex-col">
+            {/*
+              Tab list editorial: sem fundo "ativo" gritante, ativo
+              destacado por linha embaixo + cor primária no texto.
+              Mantém os tokens do design system (text-foreground / muted-foreground / primary).
+            */}
+            <TabsList className="bg-transparent justify-start gap-6 px-0 border-b border-border rounded-none h-auto pb-0">
+              <TabsTrigger
+                value="general"
+                className="bg-transparent border-0 rounded-none px-0 pb-2.5 text-sm font-medium text-muted-foreground data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary -mb-px"
+              >
+                Geral
+              </TabsTrigger>
+              <TabsTrigger
+                value="limits"
+                className="bg-transparent border-0 rounded-none px-0 pb-2.5 text-sm font-medium text-muted-foreground data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary -mb-px"
+              >
+                Limites
+              </TabsTrigger>
+              <TabsTrigger
+                value="ai"
+                className="bg-transparent border-0 rounded-none px-0 pb-2.5 text-sm font-medium text-muted-foreground data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary -mb-px"
+              >
+                AI
+              </TabsTrigger>
+              <TabsTrigger
+                value="channels"
+                className="bg-transparent border-0 rounded-none px-0 pb-2.5 text-sm font-medium text-muted-foreground data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary -mb-px"
+              >
+                Canais
+              </TabsTrigger>
+              <TabsTrigger
+                value="features"
+                className="bg-transparent border-0 rounded-none px-0 pb-2.5 text-sm font-medium text-muted-foreground data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary -mb-px"
+              >
+                Funcionalidades
+              </TabsTrigger>
+            </TabsList>
 
-          <DialogFooter>
+            <div className="overflow-y-auto py-4 pr-1 -mr-1 flex-1">
+              <TabsContent value="general" className="space-y-4 mt-0">
+                <div>
+                  <Label htmlFor="acc-name">Nome *</Label>
+                  <Input
+                    id="acc-name"
+                    value={form.name}
+                    onChange={e => setForm({ ...form, name: e.target.value })}
+                    placeholder="Nome do cliente"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="acc-domain">Domain (opcional)</Label>
+                  <Input
+                    id="acc-domain"
+                    value={form.domain}
+                    onChange={e => setForm({ ...form, domain: e.target.value })}
+                    placeholder="cliente.atendai.pro"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="acc-email">E-mail de suporte</Label>
+                  <Input
+                    id="acc-email"
+                    type="email"
+                    value={form.support_email}
+                    onChange={e => setForm({ ...form, support_email: e.target.value })}
+                    placeholder="suporte@cliente.com"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="acc-locale">Locale</Label>
+                  <Input
+                    id="acc-locale"
+                    value={form.locale}
+                    onChange={e => setForm({ ...form, locale: e.target.value })}
+                    placeholder="pt-BR"
+                  />
+                </div>
+                {dialogMode.kind === 'edit' && (
+                  <div>
+                    <Label>Status</Label>
+                    <div className="flex gap-2 mt-1.5">
+                      {(['active', 'suspended', 'archived'] as const).map(s => {
+                        const checked = form.status === s;
+                        return (
+                          <label
+                            key={s}
+                            className={
+                              'flex-1 text-center py-2 px-3 border rounded-md cursor-pointer capitalize text-sm ' +
+                              (checked ? 'border-primary bg-primary/5 font-medium' : 'border-border hover:bg-accent')
+                            }
+                          >
+                            <input
+                              type="radio"
+                              name="status"
+                              value={s}
+                              checked={checked}
+                              onChange={() => setForm({ ...form, status: s })}
+                              className="sr-only"
+                            />
+                            {s === 'active' ? 'Ativo' : s === 'suspended' ? 'Suspenso' : 'Arquivado'}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="limits" className="mt-0">
+                <LimitsTab
+                  value={form.limits}
+                  onChange={(limits) => setForm({ ...form, limits })}
+                />
+              </TabsContent>
+
+              <TabsContent value="ai" className="mt-0">
+                <AiTab
+                  value={form.ai}
+                  onChange={(ai) => setForm({ ...form, ai })}
+                />
+              </TabsContent>
+
+              <TabsContent value="channels" className="mt-0">
+                <ChannelsTab
+                  value={form.channels}
+                  onChange={(channels) => setForm({ ...form, channels })}
+                />
+              </TabsContent>
+
+              <TabsContent value="features" className="mt-0">
+                <FeaturesTab
+                  value={form.features}
+                  onChange={(features) => setForm({ ...form, features })}
+                />
+              </TabsContent>
+            </div>
+          </Tabs>
+
+          {formError && (
+            <div className="text-sm text-destructive mt-2">{formError}</div>
+          )}
+
+          <DialogFooter className="border-t border-border pt-4 mt-2">
             <Button variant="outline" onClick={closeDialog} disabled={saving}>
               Cancelar
             </Button>

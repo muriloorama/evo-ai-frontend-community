@@ -1,5 +1,6 @@
 import apiAuth from '@/services/core/apiAuth';
 import { extractData } from '@/utils/apiHelpers';
+import type { AccountFeatureSnapshot } from '@/types/admin/accounts';
 
 // Shapes returned by the Auth service /api/v1/admin/* endpoints (see
 // app/controllers/api/v1/admin/accounts_controller.rb and memberships_controller.rb).
@@ -13,6 +14,9 @@ export interface AdminAccount {
   status: string;
   features: Record<string, unknown>;
   settings: Record<string, unknown>;
+  // Defaults + overrides mergados pelo FeatureGate. Pode estar ausente em
+  // versões antigas do auth-service; o consumidor cai no DEFAULT_SNAPSHOT.
+  feature_snapshot?: AccountFeatureSnapshot;
   custom_attributes: Record<string, unknown>;
   member_count: number;
   created_at: string;
@@ -35,6 +39,10 @@ export interface CreateAccountPayload {
   support_email?: string;
   locale?: string;
   status?: string;
+  // Backend persists `features` and `settings` as raw JSONB. The super-admin
+  // form sends the merged payload here directly (see SuperAdmin/Accounts
+  // tabs); only the keys the operator actually touched should be included.
+  features?: Record<string, unknown>;
   settings?: Record<string, unknown>;
   custom_attributes?: Record<string, unknown>;
 }
