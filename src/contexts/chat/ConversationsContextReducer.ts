@@ -223,6 +223,23 @@ export function conversationsReducer(
         ? 0
         : (localUnreadCount ?? action.payload.unread_count ?? 0);
 
+      // CRÍTICO pra ordenação: ignoramos last_activity_at / timestamp /
+      // waiting_since do payload em UPDATE_CONVERSATION. Esses campos
+      // controlam a ordem da lista (sort por last_activity_at desc) e só
+      // devem mudar via UPDATE_CONVERSATION_LAST_ACTIVITY (que é disparado
+      // exclusivamente quando chega mensagem real). Sem essa exclusão, cada
+      // resposta de API de status/etiqueta/prioridade/pin/atribuição traz
+      // um last_activity_at fresco do backend e empurra a conversa pro topo.
+      const {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        last_activity_at: _ignoredActivityAt,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        timestamp: _ignoredTimestamp,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        waiting_since: _ignoredWaitingSince,
+        ...payloadSansActivity
+      } = action.payload as unknown as Record<string, unknown> & Partial<typeof action.payload>;
+
       // Atualizar na lista de conversas
       const updatedConversationsList = state.conversations
         .filter(conv => conv !== null && conv !== undefined && conv.id) // Filtrar elementos nulos e sem ID
@@ -230,21 +247,21 @@ export function conversationsReducer(
           String(conv.id) === conversationId
             ? {
                 ...conv,
-                ...action.payload, // Merge ao invés de substituir
+                ...payloadSansActivity, // Merge sem mexer em last_activity_at/timestamp
                 unread_count: syncedUnreadCount, // Sincronizar com estado unreadCounts
               }
             : conv,
         );
 
       // Se é a conversa selecionada, atualizar os dados também
-      const updatedSelectedData =
+      const updatedSelectedData: Conversation | null =
         state.selectedConversationId &&
         String(state.selectedConversationId) === conversationId
-          ? {
+          ? ({
               ...state.selectedConversationData,
-              ...action.payload,
+              ...payloadSansActivity,
               unread_count: syncedUnreadCount, // Sincronizar também aqui
-            }
+            } as Conversation)
           : state.selectedConversationData;
 
       return {
