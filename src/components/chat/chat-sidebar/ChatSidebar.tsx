@@ -48,10 +48,8 @@ import { NoConversations } from '../empty-states';
 import ContactAvatar from '../contact/ContactAvatar';
 import ContactTagsList from '@/components/contacts/ContactTagsList';
 import ConversationsFilter from '../conversation/ConversationsFilter';
-import DensityToggle from './DensityToggle';
 import { BaseFilter } from '@/types/core';
 import { useLanguage } from '@/hooks/useLanguage';
-import { useDensity } from '@/hooks/useDensity';
 import { useConversationKeyboardNav } from '@/hooks/useConversationKeyboardNav';
 
 // Labels exibidos nos chips de filtros ativos. Definido em escopo de módulo
@@ -69,13 +67,44 @@ const FILTER_LABELS: Record<string, string> = {
   pipeline_id: 'Funil',
 };
 
+// Tradução dos VALORES dos filtros (status: 'all' → 'Todos', etc). Os valores
+// vêm do backend em inglês/identificadores. Sem este map, o chip mostraria
+// "Status: all" em vez de "Status: Todos".
+const VALUE_LABELS: Record<string, Record<string, string>> = {
+  status: {
+    all: 'Todos',
+    open: 'Aberta',
+    resolved: 'Resolvida',
+    pending: 'Pendente',
+    snoozed: 'Adiada',
+  },
+  priority: {
+    all: 'Todas',
+    urgent: 'Urgente',
+    high: 'Alta',
+    medium: 'Média',
+    low: 'Baixa',
+  },
+  assignee_type: {
+    me: 'Atribuídas a mim',
+    assigned: 'Atribuídas',
+    unassigned: 'Não atribuídas',
+  },
+};
+
+const translateFilterValue = (attributeKey: string, raw: unknown): string => {
+  if (raw === null || raw === undefined) return '';
+  const str = String(raw);
+  return VALUE_LABELS[attributeKey]?.[str] ?? str;
+};
+
 // Constrói o label do chip a partir do ConversationFilter. Top-level porque
 // não depende do estado do componente — só do filtro recebido.
 const formatFilterChipLabel = (filter: ConversationFilter): string => {
   const key = FILTER_LABELS[filter.attribute_key] || filter.attribute_key;
   const rawValues = Array.isArray(filter.values) ? filter.values : [filter.values];
   const valueText = rawValues
-    .map(v => (v === null || v === undefined ? '' : String(v)))
+    .map(v => translateFilterValue(filter.attribute_key, v))
     .filter(Boolean)
     .join(', ');
   return valueText ? `${key}: ${valueText}` : key;
@@ -170,9 +199,6 @@ const ChatSidebar = ({
   const sidebarScrollRef = useRef<HTMLDivElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const loadingMoreRef = useRef(false);
-
-  // Densidade visual da lista (compact | comfortable). Persistida em localStorage.
-  const [density, setDensity] = useDensity();
 
   // Detecta plataforma para mostrar o atalho correto (⌘ no mac, Ctrl em outros)
   const isMacPlatform = useMemo(() => {
@@ -774,11 +800,6 @@ const ChatSidebar = ({
               : t('chatSidebar.conversations')}
           </span>
           <div className="flex items-center gap-2">
-            {/* Toggle de densidade — só desktop */}
-            <div className="hidden md:flex">
-              <DensityToggle density={density} onChange={setDensity} />
-            </div>
-
             {/* Botão de filtros */}
             <Button
               variant="ghost"
@@ -888,7 +909,9 @@ const ChatSidebar = ({
 
               const stagePipelineInfo = getPipelineInfo(conversation);
 
-              const desktopPadding = density === 'compact' ? 'md:py-2' : 'md:py-3.5';
+              // Padding fixo confortável (14px) — densidade configurável foi
+              // removida em favor de uma única configuração padrão.
+              const desktopPadding = 'md:py-3.5';
               // Quando nenhuma conversa está selecionada, o primeiro item da
               // lista deve ser focável via Tab — caso contrário, todos ficam
               // tabIndex={-1} e o usuário de teclado não consegue entrar na

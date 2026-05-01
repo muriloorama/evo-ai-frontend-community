@@ -4,12 +4,13 @@ import { useLanguage } from '@/hooks/useLanguage';
 
 import { Button } from '@evoapi/design-system/button';
 import { Badge } from '@evoapi/design-system/badge';
-import { X, User, FileText, ChevronDown, Tag } from 'lucide-react';
+import { X, User, FileText, ChevronDown, Tag, Images, Kanban } from 'lucide-react';
 
 import ContactHeader from './ContactHeader';
 import ContactDetails from './ContactDetails';
 import ContactNotes from './ContactNotes';
 import ConversationLabels from './ConversationLabels';
+import MediaGallery from './MediaGallery';
 
 import PipelineManagement from '@/components/chat/contact-sidebar/PipelineManagement';
 import { pipelinesService } from '@/services/pipelines';
@@ -44,18 +45,19 @@ const CollapsibleHeader = ({
   <button
     type="button"
     onClick={onToggle}
-    className="flex items-center justify-between w-full gap-2 cursor-pointer px-3 py-1.5 hover:bg-accent/50 transition-colors"
+    className="flex items-center justify-between w-full gap-2 cursor-pointer px-4 py-3 hover:bg-accent/40 transition-colors rounded-md"
+    aria-expanded={isOpen}
   >
-    <div className="flex items-center gap-2 min-w-0 flex-1">
+    <div className="flex items-center gap-2.5 min-w-0 flex-1">
       {icon}
-      <h3 className="text-sm font-medium truncate leading-none">{title}</h3>
+      <h3 className="text-sm font-semibold truncate leading-none">{title}</h3>
       {count !== undefined && count > 0 && (
         <Badge variant="secondary" className="text-xs flex-shrink-0">
           {count}
         </Badge>
       )}
     </div>
-    <ChevronDown className={`h-3 w-3 flex-shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+    <ChevronDown className={`h-3.5 w-3.5 flex-shrink-0 transition-transform text-muted-foreground ${isOpen ? 'rotate-180' : ''}`} />
   </button>
 );
 
@@ -71,6 +73,7 @@ const ContactSidebar: React.FC<ContactSidebarProps> = ({
   // Estados para controlar seções expandidas/colapsadas
   const [showContactDetails, setShowContactDetails] = useState(false);
   const [showContactNotes, setShowContactNotes] = useState(false);
+  const [showMediaGallery, setShowMediaGallery] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [conversationPipelines, setConversationPipelines] = useState<Pipeline[]>([]);
 
@@ -175,66 +178,85 @@ const ContactSidebar: React.FC<ContactSidebarProps> = ({
           </Button>
         </div>
 
-        {/* Seções compactas — divisórias, sem Card wrapper pra manter 1 linha fechada */}
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain scrollbar-thin">
-          {/* 1. Contact Details - Informações do contato */}
-          <div className="border-b border-border">
+        {/* Painel com respiro entre seções (frontend-design: hierarquia clara, breathing room).
+            Wrapper externo dá padding lateral, cada seção fica num "card" com divisória sutil. */}
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain scrollbar-thin py-2 space-y-1">
+          {/* 1. Informações do contato (colapsível) */}
+          <section className="border-b border-border/60 pb-2">
             <CollapsibleHeader
               title={t('contactSidebar.sections.contactDetails.title')}
-              icon={<User className="h-3.5 w-3.5 text-green-500" />}
+              icon={<User className="h-4 w-4 text-emerald-500" />}
               isOpen={showContactDetails}
               onToggle={() => setShowContactDetails(!showContactDetails)}
             />
             {showContactDetails && (
-              <div className="px-3 pb-2">
+              <div className="px-4 pb-3 pt-1">
                 <ContactDetails contact={contact} />
               </div>
             )}
-          </div>
+          </section>
 
-          {/* 2. Contact Notes - Notas do contato */}
+          {/* 2. Notas do contato (colapsível) */}
           {contact && (
-            <div className="border-b border-border">
+            <section className="border-b border-border/60 pb-2">
               <CollapsibleHeader
                 title={t('contactSidebar.sections.contactNotes.title')}
-                icon={<FileText className="h-3.5 w-3.5 text-orange-500" />}
+                icon={<FileText className="h-4 w-4 text-amber-500" />}
                 isOpen={showContactNotes}
                 onToggle={() => setShowContactNotes(!showContactNotes)}
               />
               {showContactNotes && (
-                <div className="px-3 pb-2">
+                <div className="px-4 pb-3 pt-1">
                   <ContactNotes contactId={String(contact.id)} />
                 </div>
               )}
-            </div>
+            </section>
           )}
 
-          {/* 3. Etiquetas — sempre visível */}
+          {/* 3. Mídia & Arquivos (colapsível, NOVO) */}
           {conversation && (
-            <div className="border-b border-border px-3 py-2">
-              <div className="flex items-center gap-2 mb-1.5">
-                <Tag className="h-3.5 w-3.5 text-pink-500" />
-                <h3 className="text-sm font-medium">Etiquetas</h3>
+            <section className="border-b border-border/60 pb-2">
+              <CollapsibleHeader
+                title="Mídia & Arquivos"
+                icon={<Images className="h-4 w-4 text-sky-500" />}
+                isOpen={showMediaGallery}
+                onToggle={() => setShowMediaGallery(!showMediaGallery)}
+              />
+              {showMediaGallery && (
+                <div className="px-4 pb-4 pt-1">
+                  <MediaGallery conversationId={conversation.id} />
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* 4. Etiquetas — sempre visível */}
+          {conversation && (
+            <section className="border-b border-border/60 px-4 py-4">
+              <div className="flex items-center gap-2.5 mb-3">
+                <Tag className="h-4 w-4 text-pink-500" />
+                <h3 className="text-sm font-semibold">Etiquetas</h3>
               </div>
               <ConversationLabels
                 conversation={conversation}
                 onChange={onFilterReload}
               />
-            </div>
+            </section>
           )}
 
-          {/* 4. Kaban — sempre visível */}
+          {/* 5. Kanban — sempre visível, sem border embaixo (última seção) */}
           {conversation && (
-            <div className="px-3 py-2">
-              <div className="flex items-center gap-2 mb-1.5">
-                <h3 className="text-sm font-medium">Kaban</h3>
+            <section className="px-4 py-4">
+              <div className="flex items-center gap-2.5 mb-3">
+                <Kanban className="h-4 w-4 text-violet-500" />
+                <h3 className="text-sm font-semibold">Kanban</h3>
               </div>
               <PipelineManagement
                 conversationId={conversation.id}
                 pipelines={conversationPipelines}
                 onPipelineUpdated={handlePipelineUpdated}
               />
-            </div>
+            </section>
           )}
         </div>
       </div>
