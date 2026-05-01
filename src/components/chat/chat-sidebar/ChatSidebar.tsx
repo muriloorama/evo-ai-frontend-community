@@ -48,6 +48,7 @@ import { NoConversations } from '../empty-states';
 import ContactAvatar from '../contact/ContactAvatar';
 import ContactTagsList from '@/components/contacts/ContactTagsList';
 import ConversationsFilter from '../conversation/ConversationsFilter';
+import ConversationStatusBadge from '../conversation/ConversationStatusBadge';
 import { BaseFilter } from '@/types/core';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useConversationKeyboardNav } from '@/hooks/useConversationKeyboardNav';
@@ -956,26 +957,14 @@ const ChatSidebar = ({
                         const hasUnread = (conversations.getUnreadCount(conversation.id) || 0) > 0;
                         return (
                           <>
-                            {/* LINE 1: status dot + name + (mobile: only pin + time) (desktop: + tags + pipeline) */}
+                            {/* LINE 1: status badge + name + tracking + pin + post + pipeline + time.
+                                Status: pílula colorida (mesmo padrão do badge "Aberto" na tela de
+                                pipelines) — substitui o dot anterior pra dar contexto com texto. */}
                             <div className="flex items-center gap-1.5 min-w-0">
-                              {(() => {
-                                const status = conversation.status;
-                                const statusConfig: Record<string, { color: string; label: string }> = {
-                                  open: { color: '#22c55e', label: 'Aberta' },
-                                  pending: { color: '#eab308', label: 'Pendente' },
-                                  resolved: { color: '#9ca3af', label: 'Resolvida' },
-                                  snoozed: { color: '#a855f7', label: 'Adiada' },
-                                };
-                                const cfg = statusConfig[status as string];
-                                if (!cfg) return null;
-                                return (
-                                  <span
-                                    className="inline-block h-2 w-2 rounded-full flex-shrink-0"
-                                    style={{ backgroundColor: cfg.color }}
-                                    title={cfg.label}
-                                  />
-                                );
-                              })()}
+                              <ConversationStatusBadge
+                                status={conversation.status}
+                                hideUnknown
+                              />
                               <p className="truncate min-w-0 flex-1 text-[15px] md:text-sm font-semibold text-foreground">
                                 {conversation.contact?.name || t('chatSidebar.contactNoName')}
                               </p>
