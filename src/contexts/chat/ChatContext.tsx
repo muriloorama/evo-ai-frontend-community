@@ -495,11 +495,23 @@ function useChatIntegration() {
         const existingConversation = conversations.getConversation(conversationId);
 
         // Merge WS partial data with existing conversation.
-        // When existing data is present, spread produces a complete Conversation.
-        // For unknown conversations (no existing), cast the partial — filter checks
-        // gracefully handle missing fields via optional chaining.
+        //
+        // IMPORTANTE: descartamos `last_activity_at` e `timestamp` do payload de
+        // conversation_updated. A lista é ordenada por `last_activity_at` desc
+        // (sort em filteredConversations) e o usuário não quer que mudanças de
+        // etiqueta, status, atribuição ou prioridade subam a conversa pro topo
+        // — só mensagem real (entrada/saída) deve fazer isso, e o handler
+        // onMessageCreated cuida disso bumpando o timestamp explicitamente.
+        // Para uma conversa nova (sem existing), usamos o payload completo.
+        const {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          last_activity_at: _ignoredLastActivity,
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          timestamp: _ignoredTimestamp,
+          ...conversationWithoutActivity
+        } = conversation;
         const mergedConversation: Conversation = existingConversation
-          ? { ...existingConversation, ...conversation }
+          ? { ...existingConversation, ...conversationWithoutActivity }
           : conversation as Conversation;
 
         const matchesFilters = doesConversationMatchFilters(mergedConversation, activeFiltersRef.current, currentUser?.id);

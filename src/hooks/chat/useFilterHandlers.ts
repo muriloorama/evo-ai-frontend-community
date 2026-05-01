@@ -57,7 +57,7 @@ export const useFilterHandlers = () => {
           },
           error => {
             console.error('❌ Erro ao limpar filtros:', error);
-            reject(error instanceof Error ? error : new Error(String(error)));
+            reject(new Error(error || 'Erro ao limpar filtros'));
           },
         );
       });
