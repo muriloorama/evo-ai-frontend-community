@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Button } from '@evoapi/design-system/button';
+import { Checkbox } from '@evoapi/design-system/checkbox';
 import { Input } from '@evoapi/design-system/input';
 import { Badge } from '@evoapi/design-system/badge';
 import {
@@ -39,7 +40,10 @@ import {
   Paperclip,
   Instagram,
   Facebook,
+  ListChecks,
 } from 'lucide-react';
+import { useBulkSelection } from '@/hooks/chat/useBulkSelection';
+import BulkSelectionToolbar from './BulkSelectionToolbar';
 import { useChatContext } from '@/contexts/chat/ChatContext';
 import { Conversation, ConversationFilter } from '@/types/chat/api';
 import { formatConversationTime, formatDetailedTime } from '@/utils/time/timeHelpers';
@@ -198,6 +202,11 @@ const ChatSidebar = ({
   const [isLoadingMoreConversations, setIsLoadingMoreConversations] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const sidebarScrollRef = useRef<HTMLDivElement | null>(null);
+
+  // Modo seleção múltipla — checkboxes no card + toolbar de ações em massa.
+  // Usa Set<string> internamente; expomos toggle/clear/selectAll/exitMode
+  // pra UI.
+  const bulkSelection = useBulkSelection();
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const loadingMoreRef = useRef(false);
 
@@ -241,15 +250,27 @@ const ChatSidebar = ({
 
   // Apply search with debounce
   const handleSearchChange = (value: string) => {
+    // Quando o usuário muda a busca, sair do modo seleção: o conjunto
+    // visível mudou e manter checkboxes seria confuso (poderia haver
+    // conversa "selecionada" fora da lista visível).
+    if (bulkSelection.selectionMode || bulkSelection.selectedCount > 0) {
+      bulkSelection.exitMode();
+    }
     onSearchChange(value);
   };
 
   const handleApplyFilters = async (newFilters: BaseFilter[]) => {
+    if (bulkSelection.selectionMode || bulkSelection.selectedCount > 0) {
+      bulkSelection.exitMode();
+    }
     setConversationFilters(newFilters);
     onFilterApply(newFilters);
   };
 
   const handleClearFilters = async () => {
+    if (bulkSelection.selectionMode || bulkSelection.selectedCount > 0) {
+      bulkSelection.exitMode();
+    }
     setConversationFilters([]);
     onFilterClear();
   };
@@ -320,6 +341,21 @@ const ChatSidebar = ({
       loadingMoreRef.current = false;
     }
   }, [conversations, hasNextPage, isLoadingMoreConversations]);
+
+  // Lista de conversas atualmente selecionadas em modo bulk. Resolvida a partir
+  // da lista completa do contexto (não da `visibleConversations`) pra que a
+  // seleção sobreviva a paginação/scroll — o usuário pode selecionar 5 itens,
+  // scrollar pra baixo, e a toolbar continua mostrando "5 selecionadas".
+  const selectedConversations = useMemo(() => {
+    if (bulkSelection.selectedCount === 0) return [];
+    return conversations.state.conversations.filter(c =>
+      bulkSelection.selectedIds.has(String(c.id)),
+    );
+  }, [
+    conversations.state.conversations,
+    bulkSelection.selectedCount,
+    bulkSelection.selectedIds,
+  ]);
 
   const visibleConversations = useMemo(() => {
     const filtered = conversations.state.conversations.filter(conversation => {
@@ -776,7 +812,12 @@ const ChatSidebar = ({
             size="sm"
             className="h-10 md:h-8 flex-1 md:flex-none cursor-pointer"
             aria-pressed={!showArchived}
-            onClick={() => setShowArchived(false)}
+            onClick={() => {
+              if (bulkSelection.selectionMode || bulkSelection.selectedCount > 0) {
+                bulkSelection.exitMode();
+              }
+              setShowArchived(false);
+            }}
           >
             {t('chatSidebar.view.active')}
           </Button>
@@ -786,7 +827,12 @@ const ChatSidebar = ({
             size="sm"
             className="h-10 md:h-8 flex-1 md:flex-none cursor-pointer"
             aria-pressed={showArchived}
-            onClick={() => setShowArchived(true)}
+            onClick={() => {
+              if (bulkSelection.selectionMode || bulkSelection.selectedCount > 0) {
+                bulkSelection.exitMode();
+              }
+              setShowArchived(true);
+            }}
           >
             {t('chatSidebar.view.archived')}
           </Button>
@@ -801,6 +847,37 @@ const ChatSidebar = ({
               : t('chatSidebar.conversations')}
           </span>
           <div className="flex items-center gap-2">
+            {/* Botão "Selecionar / Cancelar" — entra/sai do modo seleção
+                múltipla. Quando ativo, mostra X. Posicionado antes de
+                "Filtros" pra ficar discreto mas alcançável. */}
+            <Button
+              type="button"
+              variant={bulkSelection.selectionMode ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => {
+                if (bulkSelection.selectionMode) {
+                  bulkSelection.exitMode();
+                } else {
+                  bulkSelection.enterMode();
+                }
+              }}
+              className="h-10 md:h-8 px-3 md:px-2 cursor-pointer"
+              aria-label={
+                bulkSelection.selectionMode
+                  ? 'Cancelar seleção múltipla'
+                  : 'Entrar em modo de seleção múltipla'
+              }
+              aria-pressed={bulkSelection.selectionMode}
+            >
+              {bulkSelection.selectionMode ? (
+                <X className="h-4 w-4" />
+              ) : (
+                <ListChecks className="h-4 w-4" />
+              )}
+              <span className="hidden md:inline">
+                {bulkSelection.selectionMode ? 'Cancelar' : 'Selecionar'}
+              </span>
+            </Button>
             {/* Botão de filtros */}
             <Button
               variant="ghost"
@@ -816,6 +893,37 @@ const ChatSidebar = ({
             </Button>
           </div>
         </div>
+
+        {/* Linha de comando do modo seleção: "Selecionar todas (N)".
+            Aparece apenas em selectionMode. */}
+        {bulkSelection.selectionMode && (
+          <div className="flex items-center justify-between gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs cursor-pointer"
+              onClick={() =>
+                bulkSelection.selectAll(visibleConversations.map(c => String(c.id)))
+              }
+              aria-label="Selecionar todas as conversas visíveis"
+            >
+              Selecionar todas ({visibleConversations.length})
+            </Button>
+            {bulkSelection.selectedCount > 0 && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs cursor-pointer"
+                onClick={bulkSelection.clear}
+                aria-label="Limpar seleção"
+              >
+                Limpar
+              </Button>
+            )}
+          </div>
+        )}
 
         {/* Chips de filtros ativos — clicáveis para remover individualmente.
             Cada chip mostra o label do filtro (ex: "Status: open") e um X que
@@ -850,6 +958,19 @@ const ChatSidebar = ({
           <p className="text-xs text-muted-foreground">{t('chatSidebar.archivedNotice')}</p>
         )}
       </div>
+
+      {/* Toolbar de ações em massa — aparece sempre que há ≥1 selecionada,
+          independente do modo (mesmo se o usuário sair do modo via "Cancelar"
+          a seleção é limpa, então não há gap). */}
+      {bulkSelection.selectedCount > 0 && (
+        <BulkSelectionToolbar
+          selectedConversations={selectedConversations}
+          onClear={bulkSelection.exitMode}
+          onAfterAction={async () => {
+            await conversations.loadConversations({});
+          }}
+        />
+      )}
 
       {/* Conversations List */}
       <div
@@ -919,23 +1040,39 @@ const ChatSidebar = ({
               // listbox sem usar Ctrl+K primeiro.
               const isFocusable =
                 isSelected || (!conversations.state.selectedConversationId && index === 0);
+              const conversationIdStr = String(conversation.id);
+              const isBulkSelected =
+                bulkSelection.selectionMode &&
+                bulkSelection.isSelected(conversationIdStr);
+              const handleCardClick = () => {
+                // Em modo seleção, click no card alterna o checkbox em vez
+                // de abrir a conversa. Visualização preservada — o usuário
+                // pode sair do modo a qualquer momento via botão "Cancelar".
+                if (bulkSelection.selectionMode) {
+                  bulkSelection.toggle(conversationIdStr);
+                  return;
+                }
+                onConversationSelect(conversation);
+              };
               return renderConversationContextMenu(
                 conversation,
                 <div
                   key={conversation.id}
                   data-conversation-id={conversation.id}
                   role="option"
-                  aria-selected={isSelected}
+                  aria-selected={isSelected || isBulkSelected}
                   tabIndex={isFocusable ? 0 : -1}
                   className={`relative px-3 py-3 ${desktopPadding} min-h-[64px] md:min-h-0 cursor-pointer touch-manipulation outline-none transition-colors duration-150 hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:ring-2 focus-visible:ring-primary/40 ${
-                    isSelected
+                    isBulkSelected
+                      ? 'bg-primary/10'
+                      : isSelected
                       ? 'bg-primary/10 border-l-[3px] border-l-primary'
                       : 'border-b border-border/40'
                   }`}
-                  onClick={() => onConversationSelect(conversation)}
+                  onClick={handleCardClick}
                 >
                   {/* Travessão colorido à esquerda — cor do estágio do kanban */}
-                  {stagePipelineInfo && !isSelected && (
+                  {stagePipelineInfo && !isSelected && !isBulkSelected && (
                     <div
                       className="absolute left-0 top-0 bottom-0 w-1.5 z-10 pointer-events-none"
                       style={{ backgroundColor: stagePipelineInfo.color }}
@@ -944,6 +1081,28 @@ const ChatSidebar = ({
                     />
                   )}
                   <div className="flex items-start gap-3 md:gap-2.5">
+                    {/* Checkbox visível só em modo seleção. Posicionado antes
+                        do avatar para ficar consistente com padrões de
+                        seleção em listas (Gmail, etc). Para evitar duplo
+                        toggle ao clicar exatamente no checkbox (o evento
+                        sobe pro card), interrompemos a propagação aqui — o
+                        card já chama `toggle()` e o Checkbox onChange
+                        chamaria de novo. */}
+                    {bulkSelection.selectionMode && (
+                      <div
+                        className="flex items-center pt-1"
+                        onClick={e => e.stopPropagation()}
+                      >
+                        <Checkbox
+                          checked={isBulkSelected}
+                          onCheckedChange={() =>
+                            bulkSelection.toggle(conversationIdStr)
+                          }
+                          aria-label={`Selecionar conversa de ${conversation.contact?.name || conversation.id}`}
+                          className="h-4 w-4"
+                        />
+                      </div>
+                    )}
                     <ContactAvatar
                       contact={conversation.contact}
                       channelType={channelType}
