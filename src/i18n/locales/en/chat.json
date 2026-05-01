@@ -235,8 +235,9 @@
   },
   "chatArea": {
     "selectConversation": {
-      "title": "Select a conversation",
-      "description": "Choose a conversation from the list to start viewing messages"
+      "title": "Pick a conversation",
+      "description": "Select someone from the list to read the thread and reply.",
+      "hint": "Shortcut · Ctrl+K to search"
     },
     "banner": {
       "whatsappMessage": "You can only reply to this conversation using a message template due to",

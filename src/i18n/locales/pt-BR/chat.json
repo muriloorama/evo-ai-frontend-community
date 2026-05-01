@@ -245,8 +245,9 @@
   },
   "chatArea": {
     "selectConversation": {
-      "title": "Selecione uma conversa",
-      "description": "Escolha uma conversa da lista para começar a visualizar as mensagens"
+      "title": "Escolhe uma conversa",
+      "description": "Selecione alguém na lista pra ver o histórico e responder.",
+      "hint": "Atalho · Ctrl+K busca direto"
     },
     "banner": {
       "whatsappMessage": "Você só pode responder a esta conversa usando um modelo de mensagem devido a",
@@ -842,19 +843,19 @@
   "emptyStates": {
     "noConversations": {
       "title": {
-        "search": "Nenhuma conversa encontrada",
-        "default": "Nenhuma conversa ainda"
+        "search": "Nada por aqui",
+        "default": "Tudo limpo"
       },
       "description": {
-        "search": "Não encontramos conversas com \"{{searchTerm}}\". Tente ajustar sua busca.",
-        "default": "Quando você receber mensagens dos seus clientes, elas aparecerão aqui."
+        "search": "Não achamos nada com \"{{searchTerm}}\". Tenta outras palavras ou limpa o filtro.",
+        "default": "Quando alguém mandar mensagem, aparece aqui — em ordem cronológica."
       },
-      "createNew": "Iniciar nova conversa"
+      "createNew": "Nova conversa"
     },
     "noMessages": {
-      "title": "Conversa iniciada",
-      "description": "Esta conversa não tem mensagens ainda. Seja o primeiro a enviar uma mensagem!",
-      "hint": "Use o campo abaixo para enviar sua primeira mensagem"
+      "title": "Pronto pra começar",
+      "description": "Essa conversa ainda está em silêncio. Manda a primeira mensagem — sem pressa.",
+      "hint": "Escreva no campo abaixo"
     }
   },
   "messageTemplates": {

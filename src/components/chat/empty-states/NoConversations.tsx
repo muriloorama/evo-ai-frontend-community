@@ -1,7 +1,8 @@
 import React from 'react';
-import { MessageCircle, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Button } from '@evoapi/design-system/button';
 import { useLanguage } from '@/hooks/useLanguage';
+import EmptyStateArt from './EmptyStateArt';
 
 interface NoConversationsProps {
   onCreateNew?: () => void;
@@ -10,21 +11,23 @@ interface NoConversationsProps {
 
 const NoConversations: React.FC<NoConversationsProps> = ({ onCreateNew, searchTerm }) => {
   const { t } = useLanguage('chat');
-  const isSearchResult = searchTerm && searchTerm.trim().length > 0;
+  const isSearchResult = Boolean(searchTerm && searchTerm.trim().length > 0);
 
   return (
-    <div className="flex flex-col items-center justify-center p-8 text-center">
-      <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
-        <MessageCircle className="w-8 h-8 text-muted-foreground" />
-      </div>
+    <div className="flex flex-col items-center justify-center px-8 py-12 text-center">
+      <EmptyStateArt
+        kind={isSearchResult ? 'search-empty' : 'no-conversations'}
+        size={140}
+        className="mb-5"
+      />
 
-      <h3 className="text-lg font-semibold mb-2">
+      <h3 className="text-base md:text-lg font-semibold tracking-tight mb-1.5">
         {isSearchResult
           ? t('emptyStates.noConversations.title.search')
           : t('emptyStates.noConversations.title.default')}
       </h3>
 
-      <p className="text-muted-foreground mb-6 max-w-sm">
+      <p className="text-sm text-muted-foreground max-w-xs leading-relaxed mb-6">
         {isSearchResult
           ? t('emptyStates.noConversations.description.search', { searchTerm: searchTerm || '' })
           : t('emptyStates.noConversations.description.default')}

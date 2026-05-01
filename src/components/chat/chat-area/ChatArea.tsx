@@ -7,12 +7,12 @@ import { useLanguage } from '@/hooks/useLanguage';
 import { useConversationModerations } from '@/hooks/chat/useConversationModerations';
 import { useAppDataStore } from '@/store/appDataStore';
 
-import { MessageCircle } from 'lucide-react';
 
 import { Button } from '@evoapi/design-system/button';
 
 import { MessageSkeleton } from '../loading-states';
 import { NoMessages } from '../empty-states';
+import EmptyStateArt from '../empty-states/EmptyStateArt';
 import { MessageInput } from '../message-input';
 import TypingIndicator from '../typing-indicator/TypingIndicator';
 import MessageList from '../messages/MessageList';
@@ -294,11 +294,18 @@ const ChatArea = ({
 
   if (!selectedConversationId) {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center">
-          <MessageCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">{t('chatArea.selectConversation.title')}</h3>
-          <p className="text-muted-foreground">{t('chatArea.selectConversation.description')}</p>
+      <div className="flex-1 flex items-center justify-center px-6">
+        <div className="text-center max-w-sm">
+          <EmptyStateArt kind="no-chat-selected" size={160} className="mx-auto mb-6" />
+          <h3 className="text-lg md:text-xl font-semibold tracking-tight mb-2">
+            {t('chatArea.selectConversation.title')}
+          </h3>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            {t('chatArea.selectConversation.description')}
+          </p>
+          <p className="mt-5 text-[11px] uppercase tracking-[0.18em] text-muted-foreground/70">
+            {t('chatArea.selectConversation.hint')}
+          </p>
         </div>
       </div>
     );
