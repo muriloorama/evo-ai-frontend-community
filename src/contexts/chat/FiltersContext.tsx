@@ -118,8 +118,11 @@ export function FiltersProvider({ children }: { children: React.ReactNode }) {
 
       try {
         if (filters.length === 0) {
-          // Se não há filtros, carregar conversas normais
-          const response = await chatService.getConversations();
+          // Limpar filtro = mostrar TODAS as conversas (qualquer status).
+          // Sem `status: 'all'` o backend (ConversationFinder DEFAULT_STATUS)
+          // assume 'open' e devolve só abertas — não é o que o usuário quer
+          // ao clicar no ✕ da pílula de filtro.
+          const response = await chatService.getConversations({ status: 'all' });
           const { conversations, pagination } = extractConversationsData(response);
           onSuccess(conversations, pagination);
         } else if (shouldUseAdvancedFilters(filters)) {
