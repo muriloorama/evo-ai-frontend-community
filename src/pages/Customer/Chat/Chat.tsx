@@ -225,7 +225,13 @@ const Chat = () => {
 
     filters.applySearch(
       debouncedSearchTerm,
-      () => {},
+      // Sem essa callback aplicando o resultado, a busca rodava no backend
+      // mas o frontend nunca substituía a lista de conversas — o usuário
+      // digitava "Murilo" e nada acontecia. Agora plugamos no setConversations
+      // pra que a lista filtrada apareça de fato.
+      (results, pagination) => {
+        conversations.setConversations(results, pagination);
+      },
       error => {
         console.error('Search error:', error);
       },
