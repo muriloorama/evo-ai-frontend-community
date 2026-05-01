@@ -954,14 +954,6 @@ const ChatSidebar = ({
                         const pipelineInfo = getPipelineInfo(conversation);
                         const priorityIcon = getPriorityIcon(conversation.priority);
                         const hasUnread = (conversations.getUnreadCount(conversation.id) || 0) > 0;
-                        const conversationLabels = ((conversation.labels || []) as unknown as Array<{
-                          id?: string;
-                          title?: string;
-                          name?: string;
-                          color?: string;
-                        }>)
-                          .filter(l => l && typeof l === 'object')
-                          .slice(-1); // apenas a última label atribuída (mais recente)
                         return (
                           <>
                             {/* LINE 1: status dot + name + (mobile: only pin + time) (desktop: + tags + pipeline) */}
@@ -1021,21 +1013,9 @@ const ChatSidebar = ({
                                   <span className="truncate">{pipelineInfo.title}</span>
                                 </span>
                               )}
-                              {conversationLabels.map((label, i) => {
-                                const title = label.title || label.name || '';
-                                const color = label.color || '#1f93ff';
-                                return (
-                                  <span
-                                    key={label.id || `label-${i}-${title}`}
-                                    className="hidden md:inline-flex items-center h-4 px-1.5 text-[10px] font-medium rounded-full text-white flex-shrink-0 max-w-[80px]"
-                                    style={{ backgroundColor: color }}
-                                    title={title}
-                                  >
-                                    <Tag className="h-2.5 w-2.5 mr-0.5 flex-shrink-0" />
-                                    <span className="truncate">{title}</span>
-                                  </span>
-                                );
-                              })}
+                              {/* Etiquetas (conversation.labels e contact.labels) e assignee
+                                  ficam consolidadas na linha de tags (LINE 4) — não disputam
+                                  espaço aqui no topo. */}
                               <span
                                 className={`text-[11px] flex-shrink-0 ${hasUnread ? 'text-primary font-medium' : 'text-muted-foreground'}`}
                                 title={formatDetailedTime(conversation.timestamp)}
@@ -1044,7 +1024,9 @@ const ChatSidebar = ({
                               </span>
                             </div>
 
-                            {/* LINE 2: direction + preview + (desktop: assignee) + priority + (desktop: days) + unread */}
+                            {/* LINE 2: direction + preview + priority + (desktop: days) + unread.
+                                Assignee migrou pra LINE 4 (linha de tags unificada) pra ficar
+                                consistente com o resto. */}
                             <div className="flex items-center gap-1.5 min-w-0 text-[13px] md:text-[13px] text-muted-foreground">
                               <div className="flex items-center gap-1 min-w-0 flex-1">
                                 {renderDirectionIcon(conversation)}
@@ -1054,15 +1036,6 @@ const ChatSidebar = ({
                                   )}
                                 </div>
                               </div>
-                              {conversation?.assignee && (
-                                <span
-                                  className="hidden md:inline-flex items-center h-4 px-1.5 text-[10px] font-medium rounded-full bg-primary/10 dark:bg-primary/20 text-primary max-w-[90px] flex-shrink-0"
-                                  title={conversation.assignee.name}
-                                >
-                                  <UserIcon className="h-2.5 w-2.5 mr-0.5 flex-shrink-0" />
-                                  <span className="truncate">{conversation.assignee.name}</span>
-                                </span>
-                              )}
                               {priorityIcon}
                               {pipelineInfo?.daysText && (
                                 <span className="hidden md:inline text-[10px] whitespace-nowrap flex-shrink-0">
@@ -1091,46 +1064,60 @@ const ChatSidebar = ({
                               </div>
                             )}
 
-                            {/* LINE 4 (mobile): assignee + 1 label compactos pra não perder informação (pipeline já vai na LINE 3) */}
-                            {(conversation?.assignee || conversationLabels.length > 0) && (
-                              <div className="flex md:hidden items-center gap-1 min-w-0 mt-0.5 overflow-hidden">
-                                {conversation?.assignee && (
-                                  <span
-                                    className="inline-flex items-center h-4 px-1.5 text-[10px] font-medium rounded-full bg-primary/10 dark:bg-primary/20 text-primary flex-shrink min-w-0 max-w-[100px]"
-                                    title={conversation.assignee.name}
-                                  >
-                                    <UserIcon className="h-2.5 w-2.5 mr-0.5 flex-shrink-0" />
-                                    <span className="truncate">{conversation.assignee.name}</span>
-                                  </span>
-                                )}
-                                {conversationLabels.map((label, i) => {
-                                  const title = label.title || label.name || '';
-                                  const color = label.color || '#1f93ff';
-                                  return (
+                            {/* LINE 4 (UNIFICADA): assignee + conversation.labels + contact.labels.
+                                Antes essas três estavam em locais diferentes (LINE 1, LINE 2, e fora
+                                do bloco) e variavam por viewport, fazendo o "agendado" pular de
+                                posição entre conversas. Agora caem todos no mesmo lugar com
+                                flex-wrap pra quebrar quando passar da largura da coluna. */}
+                            {(() => {
+                              const allConvLabels = ((conversation.labels || []) as unknown as Array<{
+                                id?: string;
+                                title?: string;
+                                name?: string;
+                                color?: string;
+                              }>).filter(l => l && typeof l === 'object');
+                              const contactLabels = (conversation.contact?.labels || []).filter(Boolean);
+                              const hasAnyChip =
+                                Boolean(conversation?.assignee) ||
+                                allConvLabels.length > 0 ||
+                                contactLabels.length > 0;
+                              if (!hasAnyChip) return null;
+                              return (
+                                <div className="flex flex-wrap items-center gap-1 mt-1 min-w-0">
+                                  {conversation?.assignee && (
                                     <span
-                                      key={`m-${label.id || `label-${i}-${title}`}`}
-                                      className="inline-flex items-center h-4 px-1.5 text-[10px] font-medium rounded-full text-white flex-shrink min-w-0 max-w-[80px]"
-                                      style={{ backgroundColor: color }}
-                                      title={title}
+                                      className="inline-flex items-center h-4 px-1.5 text-[10px] font-medium rounded-full bg-primary/10 dark:bg-primary/20 text-primary max-w-[140px]"
+                                      title={`Atendente: ${conversation.assignee.name}`}
                                     >
-                                      <Tag className="h-2.5 w-2.5 mr-0.5 flex-shrink-0" />
-                                      <span className="truncate">{title}</span>
+                                      <UserIcon className="h-2.5 w-2.5 mr-0.5 flex-shrink-0" />
+                                      <span className="truncate">{conversation.assignee.name}</span>
                                     </span>
-                                  );
-                                })}
-                              </div>
-                            )}
-
-                            {/* Tags do contato (só desktop — em mobile já temos densidade demais) */}
-                            {conversation.contact?.labels && conversation.contact.labels.length > 0 && (
-                              <div className="hidden md:block">
-                                <ContactTagsList
-                                  labels={conversation.contact.labels}
-                                  maxVisible={3}
-                                  size="sm"
-                                />
-                              </div>
-                            )}
+                                  )}
+                                  {allConvLabels.map((label, i) => {
+                                    const title = label.title || label.name || '';
+                                    const color = label.color || '#1f93ff';
+                                    return (
+                                      <span
+                                        key={`cl-${label.id || `${i}-${title}`}`}
+                                        className="inline-flex items-center h-4 px-1.5 text-[10px] font-medium rounded-full text-white max-w-[140px]"
+                                        style={{ backgroundColor: color }}
+                                        title={title}
+                                      >
+                                        <Tag className="h-2.5 w-2.5 mr-0.5 flex-shrink-0" />
+                                        <span className="truncate">{title}</span>
+                                      </span>
+                                    );
+                                  })}
+                                  {contactLabels.length > 0 && (
+                                    <ContactTagsList
+                                      labels={contactLabels}
+                                      maxVisible={3}
+                                      size="sm"
+                                    />
+                                  )}
+                                </div>
+                              );
+                            })()}
                           </>
                         );
                       })()}
