@@ -342,14 +342,18 @@ function useChatIntegration() {
 
           const isActivityMessage = message.message_type === MESSAGE_TYPE.ACTIVITY;
 
+          // Activity messages (ex: "Fulano adicionou etiqueta agendado", mudou
+          // status, atribuiu agente, etc) NÃO devem subir a conversa pra topo
+          // da lista. Só mensagens reais (incoming/outgoing) bumpam o
+          // last_activity_at — esse é o critério acordado com o produto.
           const updatedConversation: Conversation = {
             ...conversation,
-            timestamp: validTimestamp,
-            last_activity_at: new Date(validTimestamp * 1000).toISOString(),
             unread_count: currentUnreadCount ?? conversation.unread_count ?? 0,
             ...(isActivityMessage
               ? {}
               : {
+                  timestamp: validTimestamp,
+                  last_activity_at: new Date(validTimestamp * 1000).toISOString(),
                   last_non_activity_message: {
                     id: message.id,
                     content: message.content ?? '',
@@ -433,19 +437,19 @@ function useChatIntegration() {
         }
 
         const validTimestamp = normalizeToUnixSeconds(message.created_at);
-        const updatedConversationBase: Conversation = {
-          ...conversation,
-          timestamp: validTimestamp,
-          last_activity_at: new Date(validTimestamp * 1000).toISOString(),
-        };
 
+        // Atualizações de mensagens de atividade (ex: a label-add que vira um
+        // "Fulano adicionou etiqueta") NÃO bumpam timestamp/last_activity_at —
+        // só mensagens reais (incoming/outgoing/template) reordenam a lista.
         if (message.message_type === MESSAGE_TYPE.ACTIVITY) {
-          conversations.updateConversation(updatedConversationBase);
+          // Sem mudanças relevantes pra UI da lista — pula.
           return;
         }
 
         conversations.updateConversation({
-          ...updatedConversationBase,
+          ...conversation,
+          timestamp: validTimestamp,
+          last_activity_at: new Date(validTimestamp * 1000).toISOString(),
           last_non_activity_message: {
             id: message.id,
             content: message.content ?? '',
