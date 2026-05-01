@@ -39,12 +39,32 @@ export const useFilterHandlers = () => {
       // 🗑️ LIMPAR: Remover filtros salvos do localStorage
       clearConversationFilters();
 
-      // 🎯 FILTRO PADRÃO: Carregar apenas conversas abertas ao limpar filtros
-      await conversations.loadConversations({ status: 'open' });
+      // applyFilters([]) faz duas coisas críticas pra que o chip de filtro
+      // realmente desapareça quando o usuário clica no ✕:
+      //   1. dispatcha SET_ACTIVE_FILTERS = [] no contexto, então o chip
+      //      derivado de filters.state.activeFilters é desmontado.
+      //   2. chama getConversations() SEM status, mostrando todas as conversas
+      //      (o que o usuário espera quando remove o filtro "Status: Aberta").
+      // Antes este handler chamava loadConversations({ status: 'open' }), que
+      // não tocava no estado do contexto — então o chip voltava por causa do
+      // useEffect de sincronização e a lista filtrava só "open" de novo.
+      await new Promise<void>((resolve, reject) => {
+        filters.applyFilters(
+          [],
+          (conversationsResult, pagination) => {
+            conversations.setConversations(conversationsResult, pagination);
+            resolve();
+          },
+          error => {
+            console.error('❌ Erro ao limpar filtros:', error);
+            reject(error instanceof Error ? error : new Error(String(error)));
+          },
+        );
+      });
     } catch (error) {
       console.error('❌ Erro inesperado ao limpar filtros:', error);
     }
-  }, [conversations]);
+  }, [filters, conversations]);
 
   // 🔄 FUNÇÃO PARA RECARREGAR FILTROS: Reaplicar filtros atuais após mudanças
   const reloadCurrentFilters = useCallback(async () => {
