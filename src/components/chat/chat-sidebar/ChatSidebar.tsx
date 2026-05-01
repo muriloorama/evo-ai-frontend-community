@@ -972,58 +972,9 @@ const ChatSidebar = ({
                               <p className="truncate min-w-0 flex-1 text-[15px] md:text-sm font-semibold text-foreground">
                                 {conversation.contact?.name || t('chatSidebar.contactNoName')}
                               </p>
-                              {/* Etiquetas (assignee + conversation.labels + contact.labels) na
-                                  MESMA linha do nome, logo depois dele. Cluster com max-w pra não
-                                  expulsar a data; cada chip individual trunca o texto se for longo. */}
-                              {(() => {
-                                const allConvLabels = ((conversation.labels || []) as unknown as Array<{
-                                  id?: string;
-                                  title?: string;
-                                  name?: string;
-                                  color?: string;
-                                }>).filter(l => l && typeof l === 'object');
-                                const contactLabels = (conversation.contact?.labels || []).filter(Boolean);
-                                const hasAnyChip =
-                                  Boolean(conversation?.assignee) ||
-                                  allConvLabels.length > 0 ||
-                                  contactLabels.length > 0;
-                                if (!hasAnyChip) return null;
-                                return (
-                                  <div className="hidden md:flex items-center gap-1 flex-shrink-0 max-w-[45%] overflow-hidden">
-                                    {conversation?.assignee && (
-                                      <span
-                                        className="inline-flex items-center h-4 px-1.5 text-[10px] font-medium rounded-full bg-primary/10 dark:bg-primary/20 text-primary max-w-[120px] flex-shrink-0"
-                                        title={`Atendente: ${conversation.assignee.name}`}
-                                      >
-                                        <UserIcon className="h-2.5 w-2.5 mr-0.5 flex-shrink-0" />
-                                        <span className="truncate">{conversation.assignee.name}</span>
-                                      </span>
-                                    )}
-                                    {allConvLabels.map((label, i) => {
-                                      const title = label.title || label.name || '';
-                                      const color = label.color || '#1f93ff';
-                                      return (
-                                        <span
-                                          key={`cl-${label.id || `${i}-${title}`}`}
-                                          className="inline-flex items-center h-4 px-1.5 text-[10px] font-medium rounded-full text-white max-w-[120px] flex-shrink-0"
-                                          style={{ backgroundColor: color }}
-                                          title={title}
-                                        >
-                                          <Tag className="h-2.5 w-2.5 mr-0.5 flex-shrink-0" />
-                                          <span className="truncate">{title}</span>
-                                        </span>
-                                      );
-                                    })}
-                                    {contactLabels.length > 0 && (
-                                      <ContactTagsList
-                                        labels={contactLabels}
-                                        maxVisible={2}
-                                        size="sm"
-                                      />
-                                    )}
-                                  </div>
-                                );
-                              })()}
+                              {/* Etiquetas saíram desta linha — agora ficam abaixo do preview (LINE 4
+                                  unificada) pra não disputar espaço com o nome do contato e
+                                  evitar que ele fique cortado em "D", "Sil…", etc. */}
                               {conversation.tracking_source?.source_type === 'instagram_ad' && (
                                 <Instagram
                                   className="h-3.5 w-3.5 md:h-3 md:w-3 text-pink-600 flex-shrink-0"
@@ -1097,9 +1048,15 @@ const ChatSidebar = ({
                               </div>
                             )}
 
-                            {/* Em mobile, etiquetas + assignee aparecem numa linha extra abaixo
-                                (a LINE 1 fica reservada pra badge+nome+icons em mobile pra não
-                                quebrar). Em desktop, tudo fica na LINE 1 — ver bloco acima. */}
+                            {/* LINE 4 (única linha de etiquetas, mobile + desktop): assignee +
+                                conversation.labels + contact.labels — todos abaixo do preview,
+                                deixando o nome do contato com largura total na LINE 1.
+
+                                Dedup: o backend pode mandar a mesma label tanto em
+                                conversation.labels (objeto Label com cor) quanto em
+                                conversation.contact.labels (string). Pra não renderizar duplicado,
+                                normalizamos os títulos das conversation.labels e filtramos as
+                                contact.labels que já apareceram com cor por aqui. */}
                             {(() => {
                               const allConvLabels = ((conversation.labels || []) as unknown as Array<{
                                 id?: string;
@@ -1107,17 +1064,31 @@ const ChatSidebar = ({
                                 name?: string;
                                 color?: string;
                               }>).filter(l => l && typeof l === 'object');
-                              const contactLabels = (conversation.contact?.labels || []).filter(Boolean);
+                              const seenTitles = new Set(
+                                allConvLabels
+                                  .map(l => (l.title || l.name || '').trim().toLowerCase())
+                                  .filter(Boolean),
+                              );
+                              const rawContactLabels = (conversation.contact?.labels || []).filter(Boolean);
+                              const contactLabels = rawContactLabels.filter(raw => {
+                                const txt =
+                                  typeof raw === 'string'
+                                    ? raw
+                                    : (raw as { title?: string; name?: string })?.title ||
+                                      (raw as { title?: string; name?: string })?.name ||
+                                      '';
+                                return !seenTitles.has(txt.trim().toLowerCase());
+                              });
                               const hasAnyChip =
                                 Boolean(conversation?.assignee) ||
                                 allConvLabels.length > 0 ||
                                 contactLabels.length > 0;
                               if (!hasAnyChip) return null;
                               return (
-                                <div className="flex md:hidden flex-wrap items-center gap-1 mt-1 min-w-0">
+                                <div className="flex flex-wrap items-center gap-1 mt-1 min-w-0">
                                   {conversation?.assignee && (
                                     <span
-                                      className="inline-flex items-center h-4 px-1.5 text-[10px] font-medium rounded-full bg-primary/10 dark:bg-primary/20 text-primary max-w-[140px]"
+                                      className="inline-flex items-center h-4 px-1.5 text-[10px] font-medium rounded-full bg-primary/10 dark:bg-primary/20 text-primary max-w-[140px] flex-shrink-0"
                                       title={`Atendente: ${conversation.assignee.name}`}
                                     >
                                       <UserIcon className="h-2.5 w-2.5 mr-0.5 flex-shrink-0" />
@@ -1129,8 +1100,8 @@ const ChatSidebar = ({
                                     const color = label.color || '#1f93ff';
                                     return (
                                       <span
-                                        key={`cl-m-${label.id || `${i}-${title}`}`}
-                                        className="inline-flex items-center h-4 px-1.5 text-[10px] font-medium rounded-full text-white max-w-[140px]"
+                                        key={`cl-${label.id || `${i}-${title}`}`}
+                                        className="inline-flex items-center h-4 px-1.5 text-[10px] font-medium rounded-full text-white max-w-[140px] flex-shrink-0"
                                         style={{ backgroundColor: color }}
                                         title={title}
                                       >
@@ -1142,7 +1113,7 @@ const ChatSidebar = ({
                                   {contactLabels.length > 0 && (
                                     <ContactTagsList
                                       labels={contactLabels}
-                                      maxVisible={2}
+                                      maxVisible={3}
                                       size="sm"
                                     />
                                   )}
